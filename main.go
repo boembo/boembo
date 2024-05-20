@@ -5,15 +5,16 @@ import (
     "net/http"
 
     "taskmanager/plugin_manager"
-    "taskmanager/plugins/task"
-    "taskmanager/plugins/user"
 )
 
 func main() {
     pm := plugin_manager.NewPluginManager()
 
-    pm.RegisterPlugin("task", task.New()) // Use New() to initialize the plugin
-    pm.RegisterPlugin("user", user.New()) // Use New() to initialize the plugin
+    // Load enabled plugins from JSON file
+    if err := pm.LoadEnabledPlugins("plugins.json"); err != nil {
+        fmt.Printf("Error loading plugins: %v\n", err)
+        return
+    }
 
     http.HandleFunc("/", pm.HandleRequest) // Use plugin manager's handler
 

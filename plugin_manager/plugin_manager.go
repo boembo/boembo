@@ -1,7 +1,12 @@
 package plugin_manager
 
 import (
+    "encoding/json"
+    "fmt"
     "net/http"
+    "io/ioutil"
+    "taskmanager/plugins/task"
+    "taskmanager/plugins/user"
 )
 
 // Plugin represents a plugin module
@@ -37,4 +42,36 @@ func (pm *PluginManager) HandleRequest(w http.ResponseWriter, r *http.Request) {
         }
     }
     http.NotFound(w, r) // No matching route found
+}
+
+// LoadEnabledPlugins loads enabled plugins based on a JSON file
+func (pm *PluginManager) LoadEnabledPlugins(filename string) error {
+    // Read the JSON file
+    data, err := ioutil.ReadFile(filename)
+    if err != nil {
+        return err
+    }
+
+    // Unmarshal JSON data into a map
+    var pluginConfig map[string]bool
+    if err := json.Unmarshal(data, &pluginConfig); err != nil {
+        return err
+    }
+
+    // Load enabled plugins
+    for name, enabled := range pluginConfig {
+        if enabled {
+            switch name {
+            case "task":
+                pm.RegisterPlugin(name, task.New()) // Load task plugin
+            case "user":
+                pm.RegisterPlugin(name, user.New()) // Load user plugin
+            // Add cases for other plugins as needed
+            default:
+                fmt.Printf("Unknown plugin: %s\n", name)
+            }
+        }
+    }
+
+    return nil
 }

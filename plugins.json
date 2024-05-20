@@ -1,10 +1,5 @@
 {
-    "task": {
-        "path": "./plugins/task/task.go",
-        "enabled": true
-    },
-    "user": {
-        "path": "./plugins/user/user.go",
-        "enabled": false
-    }
-}
+    "task": true,
+    "user": true
+  }
+  
