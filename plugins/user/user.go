@@ -1,12 +1,15 @@
 package user
 
 import (
+    "database/sql"
     "fmt"
     "net/http"
 )
 
 // UserPlugin struct to represent the user plugin
-type UserPlugin struct{}
+type UserPlugin struct{
+    DB *sql.DB
+}
 
 // New creates a new UserPlugin instance
 func New() *UserPlugin {

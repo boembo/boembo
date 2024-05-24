@@ -1,22 +1,50 @@
+// task/task.go
 package task
 
 import (
-    "fmt"
-    "net/http"
+	"database/sql"
+	"encoding/json"
+	"net/http"
 )
 
-type TaskPlugin struct{}
-
-func New() *TaskPlugin { 
-    return &TaskPlugin{}
+type Task struct {
+	ID     int    `json:"id"`
+	Title  string `json:"title"`
+	ListID int    `json:"list_id"`
 }
 
-func (tp *TaskPlugin) Routes() map[string]http.HandlerFunc {
-    return map[string]http.HandlerFunc{
-        "/task": tp.handleTask,
-    }
+type TaskManager struct {
+	DB *sql.DB
 }
 
-func (tp *TaskPlugin) handleTask(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprint(w, "Hello from Task module!")
+func New(db *sql.DB) *TaskManager {
+	return &TaskManager{DB: db}
+}
+
+func (tm *TaskManager) Routes() map[string]http.HandlerFunc {
+	return map[string]http.HandlerFunc{
+		"/api/task": tm.HandleTasks,
+	}
+}
+
+func (tm *TaskManager) HandleTasks(w http.ResponseWriter, r *http.Request) {
+	rows, err := tm.DB.Query("SELECT id, title, list_id FROM tasks")
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var tasks []Task
+	for rows.Next() {
+		var task Task
+		if err := rows.Scan(&task.ID, &task.Title, &task.ListID); err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		tasks = append(tasks, task)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
 }

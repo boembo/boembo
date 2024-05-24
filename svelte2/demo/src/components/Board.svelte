@@ -1,6 +1,11 @@
 <script>
   import List from './List.svelte';
-  import { tasks } from '../stores/tasks';
+  import { tasks, fetchTasks } from '../stores/tasks';
+  import { onMount } from 'svelte';
+
+  onMount(() => {
+    fetchTasks();
+  });
 </script>
 
 <div class="board">

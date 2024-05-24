@@ -4,12 +4,14 @@ import (
     "fmt"
     "net/http"
     "strings"
+    "taskmanager/database"
     "taskmanager/plugin_manager"
 )
 
 func main() {
     pm := plugin_manager.NewPluginManager()
 
+    database.Initialize("postgres://postgres:postgres@localhost/go?sslmode=disable")
     // Load enabled plugins from JSON file
     if err := pm.LoadEnabledPlugins("plugins.json"); err != nil {
         fmt.Printf("Error loading plugins: %v\n", err)

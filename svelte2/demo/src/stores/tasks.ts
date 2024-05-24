@@ -1,6 +1,28 @@
+// src/stores/tasks.js
 import { writable } from 'svelte/store';
 
-export const tasks = writable({
-  list1: [{ id: 1, title: 'Task 1' }, { id: 2, title: 'Task 2' }],
-  list2: [{ id: 3, title: 'Task 3' }, { id: 4, title: 'Task 4' }]
-});
+export const tasks = writable({});
+
+export async function fetchTasks() {
+  try {
+    const response = await fetch('/api/task');
+    if (!response.ok) {
+      throw new Error('Failed to fetch tasks');
+    }
+    const data = await response.json();
+
+    // Assuming the API returns a flat array of tasks
+    const tasksByList = data.reduce((acc, task) => {
+      const listName = `List ${task.list_id}`; // or however you want to name the lists
+      if (!acc[listName]) {
+        acc[listName] = [];
+      }
+      acc[listName].push(task);
+      return acc;
+    }, {});
+
+    tasks.set(tasksByList);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+  }
+}
