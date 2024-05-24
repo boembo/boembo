@@ -8,8 +8,8 @@
   });
 </script>
 
-<div class="board">
+<div class="flex space-x-4 p-4 bg-gray-100">
   {#each Object.keys($tasks) as listName}
-    <List listName={listName} tasks={$tasks[listName]} />
+    <List {listName} tasks={$tasks[listName]} />
   {/each}
 </div>
