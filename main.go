@@ -3,7 +3,7 @@ package main
 import (
     "fmt"
     "net/http"
-
+    "strings"
     "taskmanager/plugin_manager"
 )
 
@@ -16,7 +16,17 @@ func main() {
         return
     }
 
-    http.HandleFunc("/", pm.HandleRequest) // Use plugin manager's handler
+    fs := http.FileServer(http.Dir("./svelte2/demo/dist")) // Create the FileServer first
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        // Check if the request path starts with "/api/"
+        if strings.HasPrefix(r.URL.Path, "/api/") {
+            // If yes, let the plugin manager handle it
+            pm.HandleRequest(w, r)
+        } else {
+            // Otherwise, serve the Svelte app (index.html or other Svelte paths)
+            fs.ServeHTTP(w, r) // Use the FileServer instance 
+        }
+    })
 
     fmt.Println("Server listening on :8080")
     http.ListenAndServe(":8080", nil)
