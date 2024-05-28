@@ -11,6 +11,7 @@ type Task struct {
 	ID     int    `json:"id"`
 	Title  string `json:"title"`
 	ListID int    `json:"list_id"`
+	SortNo int    `json:"sort_no"`
 }
 
 type TaskManager struct {
@@ -28,9 +29,9 @@ func (tm *TaskManager) Routes() map[string]http.HandlerFunc {
 }
 
 func (tm *TaskManager) HandleTasks(w http.ResponseWriter, r *http.Request) {
-	rows, err := tm.DB.Query("SELECT id, title, list_id FROM tasks")
+	rows, err := tm.DB.Query("SELECT id, title, list_id, sort_no FROM tasks ORDER BY sort_no ASC")
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, "Internal server error 2", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -38,7 +39,7 @@ func (tm *TaskManager) HandleTasks(w http.ResponseWriter, r *http.Request) {
 	var tasks []Task
 	for rows.Next() {
 		var task Task
-		if err := rows.Scan(&task.ID, &task.Title, &task.ListID); err != nil {
+		if err := rows.Scan(&task.ID, &task.Title, &task.ListID, &task.SortNo); err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}

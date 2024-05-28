@@ -6,6 +6,7 @@ import (
 	"log"
 
 	_ "github.com/lib/pq"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var db *sql.DB
@@ -13,7 +14,7 @@ var db *sql.DB
 // Initialize initializes the database connection
 func Initialize(connString string) {
 	var err error
-	db, err = sql.Open("postgres", connString)
+	db, err = sql.Open("mysql", connString)
 	if err != nil {
 		log.Fatalf("Error connecting to the database: %v\n", err)
 	}
