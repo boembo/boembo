@@ -14,6 +14,12 @@ type Task struct {
 	SortNo int    `json:"sort_no"`
 }
 
+type ListWithTasks struct {
+    ID       int     `json:"id"`
+    ListName string  `json:"list_name"`
+    Tasks    []Task `json:"tasks"`
+}
+
 type TaskManager struct {
 	DB *sql.DB
 }
@@ -27,25 +33,47 @@ func (tm *TaskManager) Routes() map[string]http.HandlerFunc {
 		"/api/task": tm.HandleTasks,
 	}
 }
-
 func (tm *TaskManager) HandleTasks(w http.ResponseWriter, r *http.Request) {
-	rows, err := tm.DB.Query("SELECT id, title, list_id, sort_no FROM tasks ORDER BY sort_no ASC")
-	if err != nil {
-		http.Error(w, "Internal server error 2", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
+    // Query to get tasks with their list_name
+    query := `
+        SELECT t.id, t.title, t.list_id, t.sort_no, l.name AS list_name
+        FROM tasks t
+        JOIN lists l ON t.list_id = l.id
+        ORDER BY t.sort_no ASC
+    `
 
-	var tasks []Task
-	for rows.Next() {
-		var task Task
-		if err := rows.Scan(&task.ID, &task.Title, &task.ListID, &task.SortNo); err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		tasks = append(tasks, task)
-	}
+    rows, err := tm.DB.Query(query)
+    if err != nil {
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tasks)
+    // Group tasks by list_id and list_name
+    taskMap := make(map[int]ListWithTasks) // Keyed by list_id
+
+    for rows.Next() {
+        var task Task
+        var listName string
+        if err := rows.Scan(&task.ID, &task.Title, &task.ListID, &task.SortNo, &listName); err != nil {
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+
+        list, ok := taskMap[task.ListID]
+        if !ok {
+            list = ListWithTasks{ID: task.ListID, ListName: listName, Tasks: []Task{}} // Initialize new list if not found
+        }
+        list.Tasks = append(list.Tasks, task)
+        taskMap[task.ListID] = list
+    }
+
+    // Convert map to slice for response
+    var lists []ListWithTasks
+    for _, list := range taskMap {
+        lists = append(lists, list)
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(lists)
 }
