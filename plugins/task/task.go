@@ -31,6 +31,7 @@ func New(db *sql.DB) *TaskManager {
 func (tm *TaskManager) Routes() map[string]http.HandlerFunc {
 	return map[string]http.HandlerFunc{
 		"/api/task": tm.HandleTasks,
+		"/api/task/sort": tm.HandleTaskSort,
 	}
 }
 func (tm *TaskManager) HandleTasks(w http.ResponseWriter, r *http.Request) {
@@ -76,4 +77,34 @@ func (tm *TaskManager) HandleTasks(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(lists)
+}
+
+func (tm *TaskManager) HandleTaskSort(w http.ResponseWriter, r *http.Request) {
+	var requestBody struct {
+		Tasks  []Task `json:"tasks"`
+		ListID int    `json:"list_id"`
+	}
+
+	// Parse JSON request body
+	err := json.NewDecoder(r.Body).Decode(&requestBody)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Update each task's sort_no and list_id in the database
+	for i, task := range requestBody.Tasks {
+		_, err := tm.DB.Exec(
+			"UPDATE tasks SET sort_no = ?, list_id = ? WHERE id = ?",
+			i,
+			requestBody.ListID,
+			task.ID,
+		)
+		if err != nil {
+			http.Error(w, "Error updating task order", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK) // Success
 }

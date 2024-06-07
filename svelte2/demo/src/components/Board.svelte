@@ -10,6 +10,6 @@
 
 <div class="flex space-x-4 p-4 bg-gray-100 justify-start">
   {#each $tasks as list}
-    <List listName={list.list_name} tasks={list.tasks} />
+    <List {list} tasks={list.tasks} />
   {/each}
 </div>
