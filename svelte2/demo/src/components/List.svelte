@@ -8,6 +8,14 @@
 
   function handleSort(e) {
 		tasks = e.detail.items;
+console.log("On consider " + listName);
+
+	}
+
+function updateList(e) {
+		tasks = e.detail.items;
+console.log("Update new tasks" + listName);
+console.log(tasks);
 	}
 </script>
 
@@ -17,7 +25,7 @@
     class="space-y-2 min-h-[100px]"
     use:dndzone={{ items: tasks, flipDurationMs }}
     on:consider={handleSort}
-    on:finalize={handleSort}
+    on:finalize={updateList}
   >
     {#each tasks as task (task.id)}
       <Task  {task} />

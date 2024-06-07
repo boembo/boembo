@@ -11,7 +11,7 @@ import (
 func main() {
     pm := plugin_manager.NewPluginManager()
 
-    database.Initialize("root:@(localhost:3306)/taskmanager")
+    database.Initialize("root:@(localhost:3306)/test")
     // Load enabled plugins from JSON file
     if err := pm.LoadEnabledPlugins("plugins.json"); err != nil {
         fmt.Printf("Error loading plugins: %v\n", err)

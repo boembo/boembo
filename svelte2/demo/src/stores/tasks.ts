@@ -12,16 +12,16 @@ export async function fetchTasks() {
     const data = await response.json();
 
     // Assuming the API returns a flat array of tasks
-    const tasksByList = data.reduce((acc, task) => {
-      const listName = `List ${task.list_id}`; // or however you want to name the lists
-      if (!acc[listName]) {
-        acc[listName] = [];
-      }
-      acc[listName].push(task);
-      return acc;
-    }, {});
+//    const tasksByList = data.reduce((acc, task) => {
+//      const listName = `List ${task.list_id}`; // or however you want to name the lists
+//      if (!acc[listName]) {
+//        acc[listName] = [];
+//      }
+//      acc[listName].push(task);
+//      return acc;
+//    }, {});
 
-    tasks.set(tasksByList);
+    tasks.set(data);
   } catch (error) {
     console.error('Error fetching tasks:', error);
   }
