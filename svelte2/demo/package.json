@@ -10,6 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
+    "@rollup/plugin-dynamic-import-vars": "^2.1.2",
     "@sveltejs/vite-plugin-svelte": "^3.0.2",
     "@tsconfig/svelte": "^5.0.2",
     "autoprefixer": "^10.4.19",
@@ -22,6 +23,7 @@
     "vite": "^5.2.11"
   },
   "dependencies": {
+    "rollup": "^4.18.0",
     "svelte-dnd-action": "^0.9.47"
   }
 }
