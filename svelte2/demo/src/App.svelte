@@ -4,7 +4,7 @@ import { tasks } from './stores/tasks';
  import { onMount } from 'svelte'
 
   let dynamicPage = null
-   let component = "Board"
+   let component = "Home"
 
   onMount(async () => {
       try {
