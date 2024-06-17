@@ -43,14 +43,31 @@ let layout = layoutOriginal;
 
   // Function to add a new widget to the layout
   function addWidget(widgetType) {
-    layout = [
-      ...layout,
-      {
-        [breakpoint]: gridHelp.item(),
-        id: id(),
-        component: widgetType === 'Total Task Widget' ? TotalTaskWidget : null, 
-      },
-    ];
+items = [
+        {
+    6: gridHelp.item({
+      x: 0,
+      y: 0,
+      w: 2,
+      h: 2,
+    }),
+    id: id(),
+  },
+
+  {
+    6: gridHelp.item({
+      x: 3,
+      y: 0,
+      w: 2,
+      h: 2,
+    }),
+    id: id(),
+    component:  TotalTaskWidget, 
+  },
+
+  ]
+
+ 
     closePanel();
   }
 
@@ -87,16 +104,14 @@ const reset = () => {
 <button on:click={reset} class="bg-blue-500 text-white px-4 py-2 rounded">
     reset
   </button>
-  <Grid bind:items={items} rowHeight={100} let:item {cols} let:index on:change={onChange}>
+  <Grid bind:items={items} rowHeight={100}  let:item let:layout let:dataItem {cols} let:index on:change={onChange}>
 <div class=demo-widget>
-     {index}
+     {index} 
     </div>
 
-    {#each layout as item (item.id)}
-      <div class="demo-widget">
-        <svelte:component this={item.component} />
+        <div class="demo-widget">
+        <svelte:component this={dataItem.component} />
       </div>
-    {/each}
   </Grid>
 
 <SlidingPanel bind:isOpen={$isPanelOpen} {closePanel}>
