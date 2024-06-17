@@ -6,32 +6,19 @@
   import TotalTaskWidget from './TotalTaskWidget.svelte';
 
   let isPanelOpen = writable(false);
-  let availableWidgets = ['Total Task Widget'];
+  let availableWidgets = [
+    {
+        name: "TotalTask Widget",
+        component: TotalTaskWidget
+    }
+];
 
 
   const id = () => "_" + Math.random().toString(36).substr(2, 9);
 
 
 let layoutOriginal  = [
-        {
-    6: gridHelp.item({
-      x: 0,
-      y: 0,
-      w: 2,
-      h: 2,
-    }),
-    id: id(),
-  },
-
-  {
-    6: gridHelp.item({
-      x: 2,
-      y: 0,
-      w: 2,
-      h: 2,
-    }),
-    id: id(),
-  },
+       
   ];
 
 let layout = layoutOriginal;
@@ -41,41 +28,36 @@ let layout = layoutOriginal;
     [breakpoint, column],
   ];
 
+let items = layout;
   // Function to add a new widget to the layout
-  function addWidget(widgetType) {
-items = [
-        {
+  function addWidget(widget) {
+const newItem = 
+   
+  {
     6: gridHelp.item({
       x: 0,
       y: 0,
-      w: 2,
-      h: 2,
-    }),
-    id: id(),
-  },
-
-  {
-    6: gridHelp.item({
-      x: 3,
-      y: 0,
-      w: 2,
+      w: 3,
       h: 2,
     }),
     id: id(),
     component:  TotalTaskWidget, 
-  },
+  } ;
 
-  ]
+items = [...[newItem], ...items];
 
- 
+  items = gridHelp.adjust(items, 6);
+
     closePanel();
   }
 
-let items = layout;
 
 
 
-  function openPanel() {
+
+  function openPanel(event) {
+console.log("click");
+event.stopPropagation();
     isPanelOpen.set(true);
   }
 
@@ -95,7 +77,7 @@ const reset = () => {
 };
 
 </script>
-<div class="demo-container size">
+<div class="container min-w-full">
 
 <button on:click={openPanel} class="bg-blue-500 text-white px-4 py-2 rounded">
     Add Widget
@@ -108,7 +90,6 @@ const reset = () => {
 <div class=demo-widget>
      {index} 
     </div>
-
         <div class="demo-widget">
         <svelte:component this={dataItem.component} />
       </div>
@@ -123,7 +104,7 @@ const reset = () => {
             on:click={() => addWidget(widget)}
             class="bg-green-500 text-white px-4 py-2 rounded"
           >
-            {widget}
+            {widget.name}
           </button>
         </li>
       {/each}
@@ -133,7 +114,7 @@ const reset = () => {
 <style>
   .size {
     max-width: 1100px;
-    width: 500px;
+    width: 1000px;
   }
 
   .demo-widget {
