@@ -152,7 +152,7 @@
         Reset
       </button>
 
-      <Grid bind:items={items} rowHeight={100} let:item let:layout let:dataItem {cols} let:index on:change={onChange}>
+      <Grid bind:items={items} rowHeight={100} let:item let:layout let:dataItem {cols} let:index on:change={onChange} fastStart={true}>
         <div class="demo-widget h-full">
           <svelte:component this={dataItem.component} />
         </div>
@@ -194,5 +194,10 @@
   }
   .collapsed .sidebar a {
     display: none;
+  }
+
+:global(.svlt-grid-item) {
+    /* Resizer color */
+    transform: none !important;
   }
 </style>
