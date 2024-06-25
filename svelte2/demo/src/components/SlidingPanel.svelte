@@ -4,11 +4,11 @@
   export let isOpen;
   export let closePanel;
 
-  const handleClickOutside = (event) => {
+  function handleClickOutside(event) {
     if (event.target.closest('.sliding-panel-container') === null) {
       closePanel();
     }
-  };
+  }
 
   onMount(() => {
     document.addEventListener('click', handleClickOutside);
@@ -22,7 +22,7 @@
   .sliding-panel-container {
     position: fixed;
     top: 0;
-    right: -300px; /* Initially hidden */
+    right: -300px;
     width: 300px;
     height: 100%;
     background-color: white;
@@ -32,7 +32,7 @@
   }
 
   .sliding-panel-container.open {
-    right: 0; /* Slide in from the right */
+    right: 0;
     transform: translateX(0);
   }
 
