@@ -5,13 +5,14 @@
   import ComponentSetting from './ComponentSetting.svelte';
 
   const dispatch = createEventDispatcher();
-
+  
   let settings = writable({
     showTitle: true,
   });
 
   let isPanelOpen = writable(false);
 
+export let openSettingPanel;
   function handleResize(event) {
     dispatch('resize', event.detail);
   }
@@ -19,7 +20,7 @@
   function openSettingsPanel(event) {
 event.stopPropagation();
 console.log("opensetting from Totaltask");
-    isPanelOpen.set(true);
+    openSettingPanel(event,settings);
   }
 
   function closePanel() {
@@ -45,11 +46,6 @@ console.log("close panel from Totaltask");
     <!-- Your widget body content here -->
   </div>
 
-  {#if isPanelOpen}
-    <SlidingPanel bind:isOpen={$isPanelOpen} {closePanel}>
-      <ComponentSetting settings={settings} />
-    </SlidingPanel>
-  {/if}
 </div>
 
 <style>

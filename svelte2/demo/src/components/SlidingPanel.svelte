@@ -3,8 +3,10 @@
 
   export let isOpen;
   export let closePanel;
+    export let settings;
 
   function handleClickOutside(event) {
+console.log("handleclickoutside at slidingpanel");
     const panelContainer = document.querySelector('.sliding-panel-container');
     if (panelContainer && !panelContainer.contains(event.target)) {
       closePanel();
@@ -18,7 +20,20 @@
   onDestroy(() => {
     document.removeEventListener('click', handleClickOutside);
   });
+
 </script>
+
+
+
+{#if isOpen}
+  <div class="overlay" on:click={closePanel}></div>
+{/if}
+<div class="sliding-panel-container {isOpen ? 'open' : ''}">
+  <div class="sliding-panel">
+    <slot></slot>
+  </div>
+</div>
+
 
 <style>
   .sliding-panel-container {
@@ -48,13 +63,3 @@
     z-index: 999;
   }
 </style>
-
-{#if isOpen}
-  <div class="overlay" on:click={closePanel}></div>
-<div class="sliding-panel-container {isOpen ? 'open' : ''}">
-  <div class="sliding-panel">
-    <slot></slot>
-  </div>
-</div>
-{/if}
-

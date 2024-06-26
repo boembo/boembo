@@ -7,6 +7,7 @@
   import TotalTaskWidget from './TotalTaskWidget.svelte';
 
   let isPanelOpen = writable(false);
+ let isPanelSettingOpen = writable(false);
   let availableWidgets = [
     {
       name: "TotalTask Widget",
@@ -14,6 +15,7 @@
     }
   ];
 
+let settings = writable({});
   let isSidebarOpen = writable(true);  // Store for sidebar state
   let isProfileDropdownOpen = false;  // For profile dropdown
 
@@ -42,12 +44,9 @@ console.log("add widget");
       component: TotalTaskWidget,
     };
 
-    items = [...[newItem], ...items];
-
-  items = gridHelp.adjust(items, 6);
-
-console.log(items);
-    closePanel();
+items = [newItem, ...items];
+items = gridHelp.adjust(items, 6);
+closePanel();
   }
 
   function toggleSidebar() {
@@ -64,6 +63,18 @@ console.log(items);
     event.stopPropagation();
     isPanelOpen.set(true);
   }
+
+function openSettingPanel(event, data) {
+    console.log("Home Opensetting");
+
+    event.stopPropagation();
+ isPanelSettingOpen.set(true);
+    settings = data;
+  }
+
+function closePanelSetting() {
+isPanelSettingOpen.set(false);
+}
 
   function closePanel() {
     console.log("HOME close panel");
@@ -163,7 +174,7 @@ console.log(items);
 
       <Grid bind:items={items} rowHeight={100} let:item let:layout let:dataItem {cols} let:index on:change={onChange}>
         <div class="demo-widget h-full">
-          <svelte:component this={dataItem.component} />
+          <svelte:component this={dataItem.component} {openSettingPanel} />
         </div>
       </Grid>
 
@@ -182,6 +193,25 @@ console.log(items);
           {/each}
         </ul>
       </SlidingPanel>
+
+<SlidingPanel bind:isOpen={$isPanelSettingOpen} {settings} closePanel={closePanelSetting}>
+        <h2>Widget Settings</h2>
+      {#each Object.entries(settings) as [key, value]}
+        <label>
+          {key.charAt(0).toUpperCase() + key.slice(1)}:
+          {#if typeof value === 'boolean'}
+            <input type="checkbox" bind:checked={$settings[key]}>
+          {:else if Array.isArray(value)}
+            <select bind:value={$settings[key]}>
+              {#each value as option}
+                <option value={option}>{option}</option>
+              {/each}
+            </select>
+          {/if}
+        </label>
+      {/each}
+      </SlidingPanel>
+      
     </div>
   </div>
 </div>
@@ -205,7 +235,4 @@ console.log(items);
     display: none;
   }
 
-    :global(.svlt-grid-item) {
-    transform: none !important;
-}
 </style>
