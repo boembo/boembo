@@ -30,6 +30,7 @@
   let items = layout;
   // Function to add a new widget to the layout
   function addWidget(widget) {
+console.log("add widget");
     const newItem = {
       6: gridHelp.item({
         x: 0,
@@ -41,8 +42,11 @@
       component: TotalTaskWidget,
     };
 
-    items = [newItem, ...items];
-    items = gridHelp.adjust(items, 6);
+    items = [...[newItem], ...items];
+
+  items = gridHelp.adjust(items, 6);
+
+console.log(items);
     closePanel();
   }
 
@@ -55,11 +59,16 @@
   }
 
   function openPanel(event) {
+    console.log("Home click openpanel");
+
     event.stopPropagation();
     isPanelOpen.set(true);
   }
 
   function closePanel() {
+    console.log("HOME close panel");
+
+
     isPanelOpen.set(false);
   }
 
@@ -195,4 +204,8 @@
   .collapsed .sidebar a {
     display: none;
   }
+
+    :global(.svlt-grid-item) {
+    transform: none !important;
+}
 </style>
