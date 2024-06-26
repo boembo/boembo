@@ -5,11 +5,16 @@
   import ComponentSetting from './ComponentSetting.svelte';
 
   const dispatch = createEventDispatcher();
-  
+  export let widget;
   let settings = writable({
-    showTitle: true,
+    showTitle: { value: true, type: 'slidingCheckbox' },
+    widgetTitleColor: {
+      value: 'orange',
+      options: ['orange', 'blue'],
+      type: 'selectbox'
+    }
   });
-
+let widgetInstance; 
   let isPanelOpen = writable(false);
 
 export let openSettingPanel;
@@ -21,17 +26,27 @@ export let openSettingPanel;
 event.stopPropagation();
 console.log("opensetting from Totaltask");
     openSettingPanel(event,settings);
+
+console.log(isPanelOpen);
+  }
+
+function applySettings(newSettings) {
+    settings.set(newSettings);
+    closePanel();
   }
 
   function closePanel() {
 console.log("close panel from Totaltask");
     isPanelOpen.set(false);
   }
+
+$: $settings.showTitle.value;
+  $: $settings.widgetTitleColor.value;
 </script>
 
-<div class="h-full bg-gray-100 p-4 rounded-md border border-2 border-gray-200 relative" on:resize={handleResize}>
+<div bind:this={widgetInstance} class="h-full bg-gray-100 p-4 rounded-md border border-2 border-gray-200 relative" on:resize={handleResize} style="color: {$settings.widgetTitleColor.value}">
   <div class="flex items-center justify-between mb-2">
-    {#if $settings.showTitle}
+    {#if $settings.showTitle.value}
       <h3 class="widget-title">Total Task: 3</h3>
     {/if}
 
@@ -46,6 +61,9 @@ console.log("close panel from Totaltask");
     <!-- Your widget body content here -->
   </div>
 
+  {#if $isPanelOpen}
+    <ComponentSetting {settings} applySettings={applySettings} closePanel={closePanel} />
+  {/if}
 </div>
 
 <style>

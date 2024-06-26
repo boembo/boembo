@@ -1,21 +1,40 @@
 <script>
   import { onMount } from 'svelte';
-  import { writable } from 'svelte/store';
+  import { writable,get } from 'svelte/store';
   import Grid from "svelte-grid";
   import gridHelp from "svelte-grid/build/helper/index.mjs";
   import SlidingPanel from './SlidingPanel.svelte';
   import TotalTaskWidget from './TotalTaskWidget.svelte';
+  let selectedWidget = null;
 
   let isPanelOpen = writable(false);
  let isPanelSettingOpen = writable(false);
   let availableWidgets = [
     {
       name: "TotalTask Widget",
-      component: TotalTaskWidget
+      component: TotalTaskWidget,
+      defaultSettings: {
+        showTitle: true,
+        widgetTitleColor: 'orange'
+        }
     }
   ];
 
-let settings = writable({});
+  let settingsss = writable({
+    showTitle: { value: true, type: 'slidingCheckbox' },
+    widgetTitleColor: {
+      value: 'orange',
+      options: ['orange', 'blue'],
+      type: 'selectbox'
+    }
+  });
+
+let settings;
+
+	settingsss.subscribe((value) => {
+		settings = value;
+	});
+
   let isSidebarOpen = writable(true);  // Store for sidebar state
   let isProfileDropdownOpen = false;  // For profile dropdown
 
@@ -42,11 +61,20 @@ console.log("add widget");
       }),
       id: id(),
       component: TotalTaskWidget,
+widget: TotalTaskWidget,
+      settings: widget.defaultSettings
     };
 
 items = [newItem, ...items];
 items = gridHelp.adjust(items, 6);
 closePanel();
+  }
+
+ function handleApply() {
+    if (selectedWidget) {
+      selectedWidget.settings = settings.get();
+      closePanelSetting();
+    }
   }
 
   function toggleSidebar() {
@@ -64,13 +92,12 @@ closePanel();
     isPanelOpen.set(true);
   }
 
-function openSettingPanel(event, data) {
-    console.log("Home Opensetting");
+function openSettingPanel(event, widget) {
 
-    event.stopPropagation();
- isPanelSettingOpen.set(true);
-    settings = data;
+    isPanelSettingOpen.set(true);
+
   }
+
 
 function closePanelSetting() {
 isPanelSettingOpen.set(false);
@@ -81,6 +108,14 @@ isPanelSettingOpen.set(false);
 
 
     isPanelOpen.set(false);
+  }
+
+ function applySettings(newSettings) {
+    activeWidget.update(widget => {
+      widget.settings = newSettings;
+      return widget;
+    });
+    closePanelSetting();
   }
 
   const onChange = () => {
@@ -174,7 +209,7 @@ isPanelSettingOpen.set(false);
 
       <Grid bind:items={items} rowHeight={100} let:item let:layout let:dataItem {cols} let:index on:change={onChange}>
         <div class="demo-widget h-full">
-          <svelte:component this={dataItem.component} {openSettingPanel} />
+          <svelte:component this={dataItem.component} widget={dataItem.component} {openSettingPanel} />
         </div>
       </Grid>
 
@@ -194,22 +229,31 @@ isPanelSettingOpen.set(false);
         </ul>
       </SlidingPanel>
 
-<SlidingPanel bind:isOpen={$isPanelSettingOpen} {settings} closePanel={closePanelSetting}>
+<SlidingPanel bind:isOpen={$isPanelSettingOpen} closePanel={closePanelSetting}>
         <h2>Widget Settings</h2>
-      {#each Object.entries(settings) as [key, value]}
+      {#each Object.entries(settings) as [key, setting]}
+    <div class="setting-item">
+      {#if setting.type == 'slidingCheckbox'}
         <label>
-          {key.charAt(0).toUpperCase() + key.slice(1)}:
-          {#if typeof value === 'boolean'}
-            <input type="checkbox" bind:checked={$settings[key]}>
-          {:else if Array.isArray(value)}
-            <select bind:value={$settings[key]}>
-              {#each value as option}
-                <option value={option}>{option}</option>
-              {/each}
-            </select>
-          {/if}
+          <input type="checkbox" bind:checked={setting.value} />
+          {key}
         </label>
-      {/each}
+      {/if}
+      {#if setting.type == 'selectbox'}
+        <label>
+          {key}
+          <select bind:value={setting.value}>
+            {#each setting.options as option}
+              <option value={option}>{option}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
+    </div>
+  {/each}
+
+  <button on:click={handleApply}>Apply</button>
+  <button on:click={closePanel}>Cancel</button>
       </SlidingPanel>
       
     </div>
@@ -233,6 +277,14 @@ isPanelSettingOpen.set(false);
   }
   .collapsed .sidebar a {
     display: none;
+  }
+
+ .setting-item {
+    margin-bottom: 8px;
+  }
+
+  button {
+    margin-right: 8px;
   }
 
 </style>
