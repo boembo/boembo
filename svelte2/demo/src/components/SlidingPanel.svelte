@@ -4,17 +4,19 @@
   export let isOpen;
   export let closePanel;
 
-  const handleClickOutside = (event) => {
-    if (event.target.closest('.sliding-panel-container') === null) {
+  function handleClickOutside(event) {
+    const panelContainer = document.querySelector('.sliding-panel-container');
+    if (panelContainer && !panelContainer.contains(event.target)) {
       closePanel();
     }
-  };
+  }
 
   onMount(() => {
     document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
+  });
+
+  onDestroy(() => {
+    document.removeEventListener('click', handleClickOutside);
   });
 </script>
 
@@ -22,7 +24,7 @@
   .sliding-panel-container {
     position: fixed;
     top: 0;
-    right: -300px; /* Initially hidden */
+    right: -300px;
     width: 300px;
     height: 100%;
     background-color: white;
@@ -32,7 +34,7 @@
   }
 
   .sliding-panel-container.open {
-    right: 0; /* Slide in from the right */
+    right: 0;
     transform: translateX(0);
   }
 
@@ -49,9 +51,10 @@
 
 {#if isOpen}
   <div class="overlay" on:click={closePanel}></div>
-{/if}
 <div class="sliding-panel-container {isOpen ? 'open' : ''}">
   <div class="sliding-panel">
     <slot></slot>
   </div>
 </div>
+{/if}
+
