@@ -6,6 +6,7 @@
   import SlidingPanel from './SlidingPanel.svelte';
   import TotalTaskWidget from './TotalTaskWidget.svelte';
   let selectedWidget = null;
+let widgets = [];
 
   let isPanelOpen = writable(false);
  let isPanelSettingOpen = writable(false);
@@ -30,7 +31,7 @@
   });
 
 let settings;
-
+let currentWidgetSetting;
 	settingsss.subscribe((value) => {
 		settings = value;
 	});
@@ -86,8 +87,12 @@ closePanel();
     isPanelOpen.set(true);
   }
 
-function openSettingPanel(event, widget) {
-
+function openSettingPanel(event, setting, widgetIndex) {
+console.log("opensetting");
+console.log(setting);
+console.log(widgetIndex);
+    currentWidgetSetting = widgetIndex;
+    settingsss.set(get(setting));
     isPanelSettingOpen.set(true);
 
   }
@@ -104,7 +109,10 @@ isPanelSettingOpen.set(false);
     isPanelOpen.set(false);
   }
 
-let handleApply;
+
+function handleApply(newSetting, i) {
+    widgets[currentWidgetSetting].applySetting(newSetting);
+}
 
  function applySettings(newSettings) {
     activeWidget.update(widget => {
@@ -205,7 +213,7 @@ let handleApply;
 
       <Grid bind:items={items} rowHeight={100} let:item let:layout let:dataItem {cols} let:index on:change={onChange}>
         <div class="demo-widget h-full">
-          <svelte:component bind:applySetting={handleApply} this={dataItem.component} widget={dataItem.component} {openSettingPanel}  {closePanelSetting}/>
+          <svelte:component bind:this={widgets[index]} widgetIndex={index} this={dataItem.component} widget={dataItem.component} {openSettingPanel}  {closePanelSetting}/>
         </div>
       </Grid>
 

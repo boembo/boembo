@@ -6,6 +6,7 @@
 
   const dispatch = createEventDispatcher();
   export let widget;
+export let widgetIndex;
   let settings = writable({
     showTitle: { value: true, type: 'slidingCheckbox' },
     widgetTitleColor: {
@@ -26,7 +27,10 @@ export let closePanelSetting;
   function openSettingsPanel(event) {
 event.stopPropagation();
 console.log("opensetting from Totaltask");
-    openSettingPanel(event,settings);
+
+console.log(settings);
+console.log(widgetIndex);
+    openSettingPanel(event,settings, widgetIndex);
 
 
 console.log(isPanelOpen);
@@ -48,7 +52,7 @@ $: $settings.showTitle.value;
   $: $settings.widgetTitleColor.value;
 </script>
 
-<div bind:this={widgetInstance} class="h-full bg-gray-100 p-4 rounded-md border border-2 border-gray-200 relative" on:resize={handleResize} style="color: {$settings.widgetTitleColor.value}">
+<div class="h-full bg-gray-100 p-4 rounded-md border border-2 border-gray-200 relative" on:resize={handleResize} style="color: {$settings.widgetTitleColor.value}">
   <div class="flex items-center justify-between mb-2">
     {#if $settings.showTitle.value}
       <h3 class="widget-title">Total Task: 3</h3>
