@@ -61,9 +61,7 @@ $: $settings.showTitle.value;
     <!-- Your widget body content here -->
   </div>
 
-  {#if $isPanelOpen}
-    <ComponentSetting {settings} applySettings={applySettings} closePanel={closePanel} />
-  {/if}
+
 </div>
 
 <style>
