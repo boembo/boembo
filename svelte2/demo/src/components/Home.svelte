@@ -70,12 +70,6 @@ items = gridHelp.adjust(items, 6);
 closePanel();
   }
 
- function handleApply() {
-    if (selectedWidget) {
-      selectedWidget.settings = settings.get();
-      closePanelSetting();
-    }
-  }
 
   function toggleSidebar() {
     isSidebarOpen.update(open => !open);
@@ -109,6 +103,8 @@ isPanelSettingOpen.set(false);
 
     isPanelOpen.set(false);
   }
+
+let handleApply;
 
  function applySettings(newSettings) {
     activeWidget.update(widget => {
@@ -209,7 +205,7 @@ isPanelSettingOpen.set(false);
 
       <Grid bind:items={items} rowHeight={100} let:item let:layout let:dataItem {cols} let:index on:change={onChange}>
         <div class="demo-widget h-full">
-          <svelte:component this={dataItem.component} widget={dataItem.component} {openSettingPanel} />
+          <svelte:component bind:applySetting={handleApply} this={dataItem.component} widget={dataItem.component} {openSettingPanel}  {closePanelSetting}/>
         </div>
       </Grid>
 
@@ -252,7 +248,7 @@ isPanelSettingOpen.set(false);
     </div>
   {/each}
 
-  <button on:click={handleApply}>Apply</button>
+  <button on:click={() => handleApply(settings)}>Apply</button>
   <button on:click={closePanel}>Cancel</button>
       </SlidingPanel>
       

@@ -18,6 +18,7 @@ let widgetInstance;
   let isPanelOpen = writable(false);
 
 export let openSettingPanel;
+export let closePanelSetting;
   function handleResize(event) {
     dispatch('resize', event.detail);
   }
@@ -27,12 +28,15 @@ event.stopPropagation();
 console.log("opensetting from Totaltask");
     openSettingPanel(event,settings);
 
+
 console.log(isPanelOpen);
   }
 
-function applySettings(newSettings) {
+export function applySetting(newSettings) {
+console.log("apply setting");
+console.log(newSettings);
     settings.set(newSettings);
-    closePanel();
+    closePanelSetting();
   }
 
   function closePanel() {
