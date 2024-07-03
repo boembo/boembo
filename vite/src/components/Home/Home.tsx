@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Drawer, AppShell, Button, Stack } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import GridLayout from 'react-grid-layout';
@@ -12,46 +12,32 @@ import SimpleWidget from './SimpleWidget'; // Example available widget
 const ReactGridLayout = WidthProvider(GridLayout);
 
 export function Home() {
-  const [layout, setLayout] = useState([
-    { i: 'a', x: 0, y: 0, w: 6, h: 4 },
-    { i: 'b', x: 6, y: 0, w: 6, h: 4 },
-  ]);
-
+  const [layout, setLayout] = useState([]); // Start with an empty layout
   const [count, setCount] = useState(0);
   const [opened, { open, close }] = useDisclosure(false);
   const [widgetComponents, setWidgetComponents] = useState({});
 
   const availableWidgets = [
-    { name: "Total Task Widget", importPath: './TotalTaskWidget' },
-    { name: "Simple Widget", component: SimpleWidget },
+    { name: "Total Task Widget", component: './TotalTaskWidget' },
+    { name: "Simple Widget", component: './SimpleWidget' },
   ];
-
-  const mainLinksMockdata = [
-    // ... your existing mock data for links ...
-  ];
-
-  // ... (your other existing state and data, e.g., active, activeLink) ...
 
   const onLayoutChange = (newLayout) => {
     setLayout(newLayout);
   };
 
-  const preventClickBouncing = (event) => {
-    event.stopPropagation();
-  };
-
   const addGridItem = async (widget) => {
     try {
       if (!widgetComponents[widget.name]) {
-        const module = await import(widget.importPath);
+        const module = await import(widget.component);
         setWidgetComponents(prev => ({ ...prev, [widget.name]: module.default }));
       }
 
       setCount((prevCount) => prevCount + 1);
       // Add the new item at the beginning of the layout
       setLayout((prevLayout) => [
-        { i: `n${count}`, x: 0, y: 0, w: 3, h: 4 }, 
-        ...prevLayout.map((item) => ({ ...item, x: item.x + 3, y: item.y })), // Shift other items to the right
+        { i: `n${count}`, x: 0, y: 0, w: 3, h: 4 },
+        ...prevLayout, // No need to shift items, as this is the first item
       ]);
     } catch (error) {
       console.error("Error importing widget:", error);
@@ -72,24 +58,9 @@ export function Home() {
           width={1200}
           onLayoutChange={onLayoutChange}
         >
-          <div key="a" className={classes.item} onClick={preventClickBouncing}>
-            <h2>Links</h2>
-            <ul>
-              {mainLinksMockdata.map((link, index) => (
-                <li key={index}>{link.text}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div key="b" className={classes.item} onClick={preventClickBouncing}>
-            <h2>Settings</h2>
-            {/* ... your settings content ... */}
-          </div>
-
           {layout.map((item, index) => {
             if (item.i.startsWith('n')) {
               const WidgetComponent = widgetComponents[item.i];
-
               return (
                 <Suspense key={item.i} fallback={<div>Loading...</div>}>
                   {WidgetComponent && <WidgetComponent className={classes.item} />}
