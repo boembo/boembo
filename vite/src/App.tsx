@@ -18,7 +18,7 @@ export default function App() {
             <div>
                 <DoubleNavbar />
             </div>
-            <div>
+            <div className="grow">
                 <HeaderTabs />
                 <div>
                     <Home />

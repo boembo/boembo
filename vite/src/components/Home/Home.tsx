@@ -1,5 +1,5 @@
 import React, { useState, lazy, Suspense,useRef  } from 'react';
-import { Drawer, AppShell, Button, Stack, Loader, ActionIcon, Title  } from '@mantine/core';
+import { Drawer, AppShell, Button, Stack, Loader, ActionIcon, Title, Select, Checkbox  } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import GridLayout from 'react-grid-layout';
 import RGL, { WidthProvider } from "react-grid-layout";
@@ -14,15 +14,32 @@ const ReactGridLayout = WidthProvider(GridLayout);
 export function Home() {
     const initLayout = [
     {
-      i: "TotalTaskWidget",
+      i: "TotalTaskWidget100",
       widget: "./TotalTaskWidget",
-      grid: { x: 0, y: 0, w: 6, h: 2 },
+      grid: { x: 0, y: 0, w: 6, h: 4 },
+      setting: {
+        showTitle: { type: "boolean", value: false },
+        backgroundColor: {
+          type: "select",
+          value: "red",
+          options: [
+            { value: "red", label: "Red" },
+            { value: "blue", label: "Blue" },
+          ],
+        },
+      },
+
     },
   ];
   const [layout, setLayout] = useState(initLayout); // Start with an empty layout
   const [count, setCount] = useState(0);
   const [opened, { open, close }] = useDisclosure(false);
+const [settingsOpened, { open: openSettings, close: closeSettings }] =
+    useDisclosure(false);
+const [selectedWidgetId, setSelectedWidgetId] = useState(null);
+const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null);
 
+  const widgetRefs = useRef({});
   const availableWidgets = [
     { name: "Total Task Widget", component: './TotalTaskWidget' },
     { name: "Simple Widget", component: './SimpleWidget' },
@@ -44,7 +61,37 @@ export function Home() {
     }
   };
 
-    
+    const handleSettingsClick = (event, settings) => {
+
+setSelectedWidgetSettings(settings);
+    openSettings();
+  };
+
+const handleWidgetSettingChange = (settingName, value) => {
+    console.log("handlwWidgetChange");
+console.log(settingName);
+console.log(value);
+console.log("selectedWidgetId");
+console.log(selectedWidgetId);
+console.log(widgetRefs.current);
+    if (widgetRefs.current[selectedWidgetId]) {
+   console.log("found");
+      widgetRefs.current[selectedWidgetId].onSettingChange(settingName, value);
+    }
+  };
+
+const openSetting = (currentSetting) => {
+    console.log("handlwWidgetChange");
+console.log(settingName);
+console.log(value);
+console.log("selectedWidgetId");
+console.log(selectedWidgetId);
+console.log(widgetRefs.current);
+    if (widgetRefs.current[selectedWidgetId]) {
+   console.log("found");
+      widgetRefs.current[selectedWidgetId].onSettingChange(settingName, value);
+    }
+  };
 
   return (
     <AppShell className="h-screen" padding="md">
@@ -57,16 +104,17 @@ export function Home() {
           cols={12}
           rowHeight={30}
            width={1200}
+
         >
         {layout.map((item) => {
             const widgetName = item.i;
             const WidgetComponent = React.lazy(() => import(item.widget));;
 
             return (
-            <div key={item.i} data-grid={item.grid} >
+            <div key={item.i} data-grid={ item.grid }  >
                 <div className="bg-gray-200 p-2 flex justify-between items-center"> {/* Header */}
                   <Title order={4}>{widgetName}</Title>
-                  <ActionIcon variant="default" aria-label="Settings">
+                  <ActionIcon variant="default" aria-label="Settings"  onMouseDown={(e) => handleSettingsClick(e, item.setting)}>
                         <IconSettings  />
                       </ActionIcon>
                 </div>
@@ -78,7 +126,7 @@ export function Home() {
                   }
                 >
                 {WidgetComponent && (
-                      <WidgetComponent className={classes.item} />
+                      <WidgetComponent settings={allcomponentSetting[item.i]} className={classes.item} openSetting={openSetting} ref={widgetRefs.current[item.i]} />
                 )}
               </Suspense>
                 </div>
@@ -97,6 +145,36 @@ export function Home() {
               </Button>
             ))}
           </Stack>
+        </div>
+      </Drawer>
+
+    <Drawer opened={settingsOpened} onClose={closeSettings} size="md" position="right">
+        <div className="p-4">
+<Title order={4}>Settings</Title>
+         
+          <Stack>
+                {Object.entries(selectedWidgetSettings || {}).map(
+                  ([settingName, setting]) => (
+                    <div key={settingName}>
+                      {setting.type === "boolean" && (
+                        <Checkbox
+                          label={settingName}
+                          checked={setting.value}
+                          onChange={(event) => handleWidgetSettingChange(settingName, event.target.checked)}
+                        />
+                      )}
+                      {setting.type === "select" && (
+                        <Select
+                          label={settingName}
+                          value={setting.value}
+                          onChange={(value) => handleWidgetSettingChange(settingName, value)}
+                          data={setting.options}
+                        />
+                      )}
+                    </div>
+                  )
+                )}
+              </Stack>
         </div>
       </Drawer>
     </AppShell>
