@@ -22,9 +22,7 @@ export function Home() {
     { name: "Simple Widget", component: './SimpleWidget' },
   ];
 
-  const onLayoutChange = (newLayout) => {
-    setLayout(newLayout);
-  };
+ 
 
   const addGridItem = async (widget) => {
     try {
@@ -33,16 +31,17 @@ export function Home() {
         setWidgetComponents(prev => ({ ...prev, [widget.name]: module.default }));
       }
 
-      setCount((prevCount) => prevCount + 1);
-      // Add the new item at the beginning of the layout
-      setLayout((prevLayout) => [
-        { i: `n${count}`, x: 0, y: 0, w: 3, h: 4 },
-        ...prevLayout, // No need to shift items, as this is the first item
-      ]);
+   
     } catch (error) {
       console.error("Error importing widget:", error);
     }
   };
+
+ const initLayout = [
+      { i: "a", grid: {x: 0, y: 0, w: 1, h: 2, static: true} },
+      { i: "b", grid: {x: 1, y: 0, w: 3, h: 2, minW: 2, maxW: 4} },
+      { i: "c", grid: {x: 4, y: 0, w: 1, h: 2} }
+    ];
 
   return (
     <AppShell className="h-screen" padding="md">
@@ -52,23 +51,15 @@ export function Home() {
         </div>
         <ReactGridLayout
           className={classes.grid}
-          layout={layout}
           cols={12}
           rowHeight={30}
           width={1200}
-          onLayoutChange={onLayoutChange}
         >
-          {layout.map((item, index) => {
-            if (item.i.startsWith('n')) {
-              const WidgetComponent = widgetComponents[item.i];
-              return (
-                <Suspense key={item.i} fallback={<div>Loading...</div>}>
-                  {WidgetComponent && <WidgetComponent className={classes.item} />}
-                </Suspense>
-              );
-            }
-            return null; 
-          })}
+        {initLayout.map(item => (
+                 <div key={item.i} data-grid={item.grid}>
+                {item.i}
+              </div>
+            ))}
         </ReactGridLayout>
       </AppShell.Main>
 
