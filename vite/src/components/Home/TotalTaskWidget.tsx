@@ -2,6 +2,6 @@
 export default function TotalTaskWidget() {
   
   return (
-    <h1>simple</h1>
+    <h1>total task widget</h1>
   );
 }

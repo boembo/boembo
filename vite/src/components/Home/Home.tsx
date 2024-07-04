@@ -1,5 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
-import { Drawer, AppShell, Button, Stack } from '@mantine/core';
+import React, { useState, lazy, Suspense } from 'react';
+import { Drawer, AppShell, Button, Stack, Loader  } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import GridLayout from 'react-grid-layout';
 import RGL, { WidthProvider } from "react-grid-layout";
@@ -12,36 +12,38 @@ import SimpleWidget from './SimpleWidget'; // Example available widget
 const ReactGridLayout = WidthProvider(GridLayout);
 
 export function Home() {
-  const [layout, setLayout] = useState([]); // Start with an empty layout
+    const initLayout = [
+    {
+      i: "TotalTaskWidget",
+      widget: "./TotalTaskWidget",
+      grid: { x: 0, y: 0, w: 6, h: 2 },
+    },
+  ];
+  const [layout, setLayout] = useState(initLayout); // Start with an empty layout
   const [count, setCount] = useState(0);
   const [opened, { open, close }] = useDisclosure(false);
-  const [widgetComponents, setWidgetComponents] = useState({});
 
   const availableWidgets = [
     { name: "Total Task Widget", component: './TotalTaskWidget' },
     { name: "Simple Widget", component: './SimpleWidget' },
   ];
 
- 
+ let newModule;
 
   const addGridItem = async (widget) => {
+    console.log(widget);
     try {
-      if (!widgetComponents[widget.name]) {
-        const module = await import(widget.component);
-        setWidgetComponents(prev => ({ ...prev, [widget.name]: module.default }));
-      }
+         newModule = { i: widget.name+count, widget: widget.component, grid: {x: 0, y: 0, w: 6, h: 3} },
 
+        setLayout(prev => [ newModule, ...prev  ]);
+        setCount(count+1);
    
     } catch (error) {
       console.error("Error importing widget:", error);
     }
   };
 
- const initLayout = [
-      { i: "a", grid: {x: 0, y: 0, w: 1, h: 2, static: true} },
-      { i: "b", grid: {x: 1, y: 0, w: 3, h: 2, minW: 2, maxW: 4} },
-      { i: "c", grid: {x: 4, y: 0, w: 1, h: 2} }
-    ];
+    
 
   return (
     <AppShell className="h-screen" padding="md">
@@ -53,13 +55,29 @@ export function Home() {
           className={classes.grid}
           cols={12}
           rowHeight={30}
-          width={1200}
+width={1200}
         >
-        {initLayout.map(item => (
-                 <div key={item.i} data-grid={item.grid}>
-                {item.i}
-              </div>
-            ))}
+        {layout.map((item) => {
+            const widgetName = item.i;
+            const WidgetComponent = React.lazy(() => import(item.widget));;
+
+            return (
+            <div key={item.i} data-grid={item.grid} >
+              <Suspense key={item.i} 
+                fallback={
+                    <div className="flex items-center justify-center h-full">
+                      <Loader /> {/* Use Mantine's Loader component */}
+                    </div>
+                  }
+                >
+                {WidgetComponent && (
+                      <WidgetComponent className={classes.item} />
+                )}
+              </Suspense>
+                </div>
+            );
+          })}
+
         </ReactGridLayout>
       </AppShell.Main>
 
