@@ -1,12 +1,12 @@
-import React, { useState, lazy, Suspense } from 'react';
-import { Drawer, AppShell, Button, Stack, Loader  } from '@mantine/core';
+import React, { useState, lazy, Suspense,useRef  } from 'react';
+import { Drawer, AppShell, Button, Stack, Loader, ActionIcon, Title  } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import GridLayout from 'react-grid-layout';
 import RGL, { WidthProvider } from "react-grid-layout";
 import classes from './Home.module.css';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
-
+import { IconAdjustments, IconSettings } from '@tabler/icons-react';
 import SimpleWidget from './SimpleWidget'; // Example available widget
 
 const ReactGridLayout = WidthProvider(GridLayout);
@@ -37,6 +37,7 @@ export function Home() {
 
         setLayout(prev => [ newModule, ...prev  ]);
         setCount(count+1);
+        close();
    
     } catch (error) {
       console.error("Error importing widget:", error);
@@ -55,7 +56,7 @@ export function Home() {
           className={classes.grid}
           cols={12}
           rowHeight={30}
-width={1200}
+           width={1200}
         >
         {layout.map((item) => {
             const widgetName = item.i;
@@ -63,6 +64,12 @@ width={1200}
 
             return (
             <div key={item.i} data-grid={item.grid} >
+                <div className="bg-gray-200 p-2 flex justify-between items-center"> {/* Header */}
+                  <Title order={4}>{widgetName}</Title>
+                  <ActionIcon variant="default" aria-label="Settings">
+                        <IconSettings  />
+                      </ActionIcon>
+                </div>
               <Suspense key={item.i} 
                 fallback={
                     <div className="flex items-center justify-center h-full">
