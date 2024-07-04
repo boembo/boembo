@@ -30,7 +30,26 @@ export function Home() {
       },
 
     },
+{
+      i: "TotalTaskWidget1002",
+      widget: "./TotalTaskWidget",
+      grid: { x: 1, y: 0, w: 6, h: 4 },
+      setting: {
+        showTitle: { type: "boolean", value: true },
+        backgroundColor: {
+          type: "select",
+          value: "red",
+          options: [
+            { value: "red", label: "Red" },
+            { value: "blue", label: "Blue" },
+          ],
+        },
+      },
+
+    },
   ];
+
+const [allComponentSettings, setAllComponentSettings] = useState(initLayout.reduce((acc, item) => ({...acc, [item.i]: item.setting}),{}));
   const [layout, setLayout] = useState(initLayout); // Start with an empty layout
   const [count, setCount] = useState(0);
   const [opened, { open, close }] = useDisclosure(false);
@@ -41,7 +60,18 @@ const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null);
 
   const widgetRefs = useRef({});
   const availableWidgets = [
-    { name: "Total Task Widget", component: './TotalTaskWidget' },
+    { name: "Total Task Widget", component: './TotalTaskWidget',setting: {
+        showTitle: { type: "boolean", value: false },
+        backgroundColor: {
+          type: "select",
+          value: "red",
+          options: [
+            { value: "red", label: "Red" },
+            { value: "blue", label: "Blue" },
+          ],
+        },
+      }, },
+
     { name: "Simple Widget", component: './SimpleWidget' },
   ];
 
@@ -50,7 +80,7 @@ const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null);
   const addGridItem = async (widget) => {
     console.log(widget);
     try {
-         newModule = { i: widget.name+count, widget: widget.component, grid: {x: 0, y: 0, w: 6, h: 3} },
+         newModule = { i: widget.name+count, widget: widget.component, grid: {x: 0, y: 0, w: 6, h: 3}, setting: widget.setting },
 
         setLayout(prev => [ newModule, ...prev  ]);
         setCount(count+1);
@@ -61,23 +91,26 @@ const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null);
     }
   };
 
-    const handleSettingsClick = (event, settings) => {
+    const handleSettingsClick = (event, widgetId, settings) => {
 
 setSelectedWidgetSettings(settings);
+setSelectedWidgetId(widgetId);
     openSettings();
   };
 
 const handleWidgetSettingChange = (settingName, value) => {
-    console.log("handlwWidgetChange");
-console.log(settingName);
-console.log(value);
-console.log("selectedWidgetId");
-console.log(selectedWidgetId);
-console.log(widgetRefs.current);
-    if (widgetRefs.current[selectedWidgetId]) {
-   console.log("found");
-      widgetRefs.current[selectedWidgetId].onSettingChange(settingName, value);
-    }
+    setAllComponentSettings((prevSettings) => {
+      const updatedSettings = {
+        ...prevSettings,
+        [selectedWidgetId]: {
+          ...prevSettings[selectedWidgetId],
+          [settingName]: { ...prevSettings[selectedWidgetId][settingName], value },
+        },
+      };
+
+      setSelectedWidgetSettings(updatedSettings[selectedWidgetId]);
+      return updatedSettings;
+    });
   };
 
 const openSetting = (currentSetting) => {
@@ -114,7 +147,7 @@ console.log(widgetRefs.current);
             <div key={item.i} data-grid={ item.grid }  >
                 <div className="bg-gray-200 p-2 flex justify-between items-center"> {/* Header */}
                   <Title order={4}>{widgetName}</Title>
-                  <ActionIcon variant="default" aria-label="Settings"  onMouseDown={(e) => handleSettingsClick(e, item.setting)}>
+                  <ActionIcon variant="default" aria-label="Settings"  onMouseDown={(e) => handleSettingsClick(e, item.i, item.setting)}>
                         <IconSettings  />
                       </ActionIcon>
                 </div>
@@ -126,7 +159,7 @@ console.log(widgetRefs.current);
                   }
                 >
                 {WidgetComponent && (
-                      <WidgetComponent settings={allcomponentSetting[item.i]} className={classes.item} openSetting={openSetting} ref={widgetRefs.current[item.i]} />
+                      <WidgetComponent settings={allComponentSettings[item.i]} className={classes.item} openSetting={openSetting} ref={widgetRefs.current[item.i]} />
                 )}
               </Suspense>
                 </div>
