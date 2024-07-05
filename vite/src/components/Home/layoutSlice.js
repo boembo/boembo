@@ -33,7 +33,7 @@ const layoutSlice = createSlice({
                 grid: {x: 0, y: 0, w: 6, h: 3},
                 setting: action.payload.setting,
             };
-            state.layout.push(newWidget);
+            state.layout.unshift(newWidget);
         },
         updateLayout(state, action) {
             state.layout = action.payload;
