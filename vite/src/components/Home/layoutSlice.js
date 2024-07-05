@@ -4,7 +4,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
     layout: [
         {
-            i: "TotalTaskWidget0",
+            i: "TotalTaskWidget100",
             widget: "./TotalTaskWidget",
             grid: {x: 0, y: 0, w: 6, h: 4},
             setting: {
@@ -20,7 +20,6 @@ const initialState = {
             },
         },
     ],
-    count: 1,
 };
 
 const layoutSlice = createSlice({
@@ -28,24 +27,37 @@ const layoutSlice = createSlice({
     initialState,
     reducers: {
         addWidget(state, action) {
-            const newModule = {
-                i: action.payload.name + state.count,
+            const newWidget = {
+                i: `${action.payload.name}${state.layout.length}`,
                 widget: action.payload.component,
                 grid: {x: 0, y: 0, w: 6, h: 3},
                 setting: action.payload.setting,
             };
-            state.layout = [newModule, ...state.layout];
-            state.count += 1;
+            state.layout.push(newWidget);
+        },
+        updateLayout(state, action) {
+            state.layout = action.payload;
         },
         updateWidgetSetting(state, action) {
             const {widgetId, settingName, value} = action.payload;
-            const widget = state.layout.find(item => item.i === widgetId);
-            if (widget) {
-                widget.setting[settingName].value = value;
-            }
+            state.layout = state.layout.map((widget) => {
+                if (widget.i === widgetId) {
+                    return {
+                        ...widget,
+                        setting: {
+                            ...widget.setting,
+                            [settingName]: {
+                                ...widget.setting[settingName],
+                                value,
+                            },
+                        },
+                    };
+                }
+                return widget;
+            });
         },
     },
 });
 
-export const {addWidget, updateWidgetSetting} = layoutSlice.actions;
+export const {addWidget, updateLayout, updateWidgetSetting} = layoutSlice.actions;
 export default layoutSlice.reducer;

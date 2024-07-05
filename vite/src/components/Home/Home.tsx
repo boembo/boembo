@@ -1,5 +1,5 @@
 // src/components/Home/Home.js
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useState  } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Drawer, AppShell, Button, Stack, Loader, ActionIcon, Title, Select, Checkbox } from '@mantine/core';
 import GridLayout from 'react-grid-layout';
@@ -36,7 +36,7 @@ export function Home() {
   const drawerIsOpen = useSelector((state) => state.drawer.isOpen);
   const widgetSettingsIsOpen = useSelector((state) => state.widgetSettings.isOpen);
   const selectedWidgetId = useSelector((state) => state.widgetSettings.selectedWidgetId);
-  const selectedWidgetSettings = useSelector((state) => state.widgetSettings.selectedWidgetSettings);
+  const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null); 
   const layout = useSelector((state) => state.layout.layout);
 
   const handleAddWidget = (widget) => {
@@ -46,10 +46,25 @@ export function Home() {
 
   const handleSettingsClick = (widgetId, settings) => {
     dispatch(openWidgetSettings({ widgetId, settings }));
+setSelectedWidgetSettings(settings);
   };
 
   const handleWidgetSettingChange = (settingName, value) => {
     dispatch(updateWidgetSetting({ widgetId: selectedWidgetId, settingName, value }));
+
+// Update local selectedWidgetSettings immediately
+   setSelectedWidgetSettings((prevSettings) => {
+      if (prevSettings) {
+        return {
+          ...prevSettings,
+          [settingName]: {
+            ...prevSettings[settingName],
+            value: value,
+          },
+        };
+      }
+      return prevSettings;
+    });
   };
 
   return (
@@ -70,7 +85,7 @@ export function Home() {
                     <IconSettings />
                   </ActionIcon>
                 </div>
-                <Suspense
+                <Suspense key={`${item.i}`}
                   fallback={
                     <div className="flex items-center justify-center h-full">
                       <Loader />
