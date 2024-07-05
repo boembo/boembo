@@ -9,9 +9,16 @@ import '/node_modules/react-resizable/css/styles.css';
 import { IconAdjustments, IconSettings } from '@tabler/icons-react';
 import SimpleWidget from './SimpleWidget'; // Example available widget
 
+
+import { useDispatch, useSelector } from 'react-redux';
+import { openDrawer, closeDrawer } from './drawerSlice';
+
 const ReactGridLayout = WidthProvider(GridLayout);
 
 export function Home() {
+const dispatch = useDispatch();
+    const drawerIsOpen = useSelector((state) => state.drawer.isOpen);
+
     const initLayout = [
     {
       i: "TotalTaskWidget100",
@@ -84,7 +91,7 @@ const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null);
 
         setLayout(prev => [ newModule, ...prev  ]);
         setCount(count+1);
-        close();
+         dispatch(closeDrawer());
    
     } catch (error) {
       console.error("Error importing widget:", error);
@@ -130,7 +137,7 @@ console.log(widgetRefs.current);
     <AppShell className="h-screen" padding="md">
       <AppShell.Main>
         <div className="flex justify-end mb-4">
-          <Button onClick={open}>Add Widget</Button>
+          <Button onClick={() => dispatch(openDrawer())}>Add Widget</Button>
         </div>
         <ReactGridLayout
           className={classes.grid}
@@ -169,7 +176,7 @@ console.log(widgetRefs.current);
         </ReactGridLayout>
       </AppShell.Main>
 
-      <Drawer opened={opened} onClose={close} size="md" position="right">
+      <Drawer  opened={drawerIsOpen} onClose={() => dispatch(closeDrawer())}  size="md" position="right">
         <div className="p-4">
           <Stack>
             {availableWidgets.map((widget) => (
