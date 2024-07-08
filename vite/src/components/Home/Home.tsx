@@ -10,7 +10,7 @@ import classes from './Home.module.css';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { IconSettings } from '@tabler/icons-react';
-
+import WidgetWrapper from './WidgetWrapper';
 const ReactGridLayout = GridLayout.WidthProvider(GridLayout);
 
 const availableWidgets = [
@@ -87,12 +87,7 @@ setSelectedWidgetSettings(settings);
 
             return (
               <div key={item.i} data-grid={item.grid}>
-                <div className="bg-gray-200 p-2 flex justify-between items-center">
-                  <Title order={4}>{item.i}</Title>
-                  <ActionIcon variant="default" aria-label="Settings" onMouseDown={() => handleSettingsClick(item.i, item.setting)}>
-                    <IconSettings />
-                  </ActionIcon>
-                </div>
+                <WidgetWrapper id={item.i} settings={item.setting} onSettingsClick={handleSettingsClick}>
                 <Suspense key={`${item.i}`}
                   fallback={
                     <div className="flex items-center justify-center h-full">
@@ -102,6 +97,7 @@ setSelectedWidgetSettings(settings);
                 >
                   <WidgetComponent settings={item.setting} />
                 </Suspense>
+                </WidgetWrapper>
               </div>
             );
           })}
