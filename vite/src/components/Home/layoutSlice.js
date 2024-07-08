@@ -30,7 +30,12 @@ const layoutSlice = createSlice({
             const newWidget = {
                 i: `${action.payload.name}${state.layout.length}`,
                 widget: action.payload.component,
-                grid: {x: 0, y: 0, w: 6, h: 3},
+                grid: {
+                    x: 0,
+                    y: 0,
+                    w: action.payload.grid.w || 6, // Use width from layoutSetting or fallback to 6
+                    h: action.payload.grid.h || 3, // Use height from layoutSetting or fallback to 3
+                },
                 setting: action.payload.setting,
             };
             state.layout.unshift(newWidget);

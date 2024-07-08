@@ -17,6 +17,7 @@ const availableWidgets = [
   {
     name: "Total Task Widget",
     component: './TotalTaskWidget',
+    grid: {x: 0, y: 0, w: 6, h: 3},
     setting: {
       showTitle: { type: "boolean", value: false },
       backgroundColor: {
@@ -25,6 +26,22 @@ const availableWidgets = [
         options: [
           { value: "red", label: "Red" },
           { value: "blue", label: "Blue" },
+        ],
+      },
+    },
+  },
+{
+    name: "Team Task Widget",
+    component: './TeamTaskWidget', // Lazy load the widget component
+    grid: {x: 0, y: 0, w: 8, h: 8},
+    setting: {
+      showTitle: { type: "boolean", value: false },
+      backgroundColor: {
+        type: "select",
+        value: "green",
+        options: [
+          { value: "green", label: "Green" },
+          { value: "yellow", label: "Yellow" },
         ],
       },
     },
