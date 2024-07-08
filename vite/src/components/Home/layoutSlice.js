@@ -35,8 +35,11 @@ const layoutSlice = createSlice({
             };
             state.layout.unshift(newWidget);
         },
-        updateLayout(state, action) {
-            state.layout = action.payload;
+        updateLayout: (state, action) => {
+            state.layout = state.layout.map((widget) => {
+                const updatedWidget = action.payload.find((item) => item.i === widget.i);
+                return updatedWidget ? {...widget, grid: updatedWidget} : widget;
+            });
         },
         updateWidgetSetting(state, action) {
             const {widgetId, settingName, value} = action.payload;

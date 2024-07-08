@@ -5,7 +5,7 @@ import { Drawer, AppShell, Button, Stack, Loader, ActionIcon, Title, Select, Che
 import GridLayout from 'react-grid-layout';
 import { openDrawer, closeDrawer } from './drawerSlice';
 import { openWidgetSettings, closeWidgetSettings } from './widgetSettingsSlice';
-import { addWidget, updateWidgetSetting } from './layoutSlice';
+import { addWidget, updateLayout, updateWidgetSetting } from './layoutSlice';
 import classes from './Home.module.css';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -67,13 +67,21 @@ setSelectedWidgetSettings(settings);
     });
   };
 
+
+// Handle layout changes
+  const onLayoutChange = (newLayout) => {
+    console.log(newLayout); // For debugging purposes
+    dispatch(updateLayout(newLayout));
+  };
+
   return (
     <AppShell className="h-screen" padding="md">
       <AppShell.Main>
         <div className="flex justify-end mb-4">
           <Button onClick={() => dispatch(openDrawer())}>Add Widget</Button>
         </div>
-        <ReactGridLayout className={classes.grid} cols={12} rowHeight={30} width={1200}>
+        <ReactGridLayout className={classes.grid} cols={12} rowHeight={30} width={1200}
+            onLayoutChange={onLayoutChange}>
           {layout.map((item) => {
             const WidgetComponent = lazy(() => import(`${item.widget}`));
 
