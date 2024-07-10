@@ -1,35 +1,97 @@
 package main
 
 import (
-    "fmt"
+    "context"
+    "encoding/json"
+    "log"
     "net/http"
-    "strings"
-    "taskmanager/database"
-    "taskmanager/plugin_manager"
+    "os"
+    "time"
+
+    "github.com/dgrijalva/jwt-go"
+    "github.com/joho/godotenv"
+    "github.com/rs/cors"
+    "google.golang.org/api/oauth2/v2"
+    "google.golang.org/api/option"
 )
 
-func main() {
-    pm := plugin_manager.NewPluginManager()
+type Credentials struct {
+    Token string `json:"token"`
+}
 
-    database.Initialize("root:@(localhost:3306)/test")
-    // Load enabled plugins from JSON file
-    if err := pm.LoadEnabledPlugins("plugins.json"); err != nil {
-        fmt.Printf("Error loading plugins: %v\n", err)
+type Claims struct {
+    UserID string `json:"user_id"`
+    jwt.StandardClaims
+}
+
+func main() {
+    err := godotenv.Load()
+    if err != nil {
+        log.Fatalf("Error loading .env file")
+    }
+
+    mux := http.NewServeMux()
+    mux.HandleFunc("/api/auth/google", googleAuthHandler)
+    mux.HandleFunc("/api/data", dataHandler) // Example endpoint to test CORS
+
+    // Add CORS middleware
+    handler := cors.New(cors.Options{
+        AllowedOrigins:   []string{"http://localhost:5173"},
+        AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
+        AllowedHeaders:   []string{"Authorization", "Content-Type"},
+        AllowCredentials: true,
+    }).Handler(mux)
+
+    log.Println("Server started at :3000")
+    http.ListenAndServe(":3000", handler)
+}
+
+func googleAuthHandler(w http.ResponseWriter, r *http.Request) {
+    var creds Credentials
+    err := json.NewDecoder(r.Body).Decode(&creds)
+    if err != nil {
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
         return
     }
 
-    fs := http.FileServer(http.Dir("./svelte2/demo/dist")) // Create the FileServer first
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        // Check if the request path starts with "/api/"
-        if strings.HasPrefix(r.URL.Path, "/api/") {
-            // If yes, let the plugin manager handle it
-            pm.HandleRequest(w, r)
-        } else {
-            // Otherwise, serve the Svelte app (index.html or other Svelte paths)
-            fs.ServeHTTP(w, r) // Use the FileServer instance 
-        }
-    })
+    ctx := context.Background()
+    oauth2Service, err := oauth2.NewService(ctx, option.WithAPIKey(os.Getenv("CLIENT_ID")))
+    if err != nil {
+        http.Error(w, "Failed to create OAuth2 service", http.StatusInternalServerError)
+        return
+    }
 
-    fmt.Println("Server listening on :8080")
-    http.ListenAndServe(":8080", nil)
+    tokenInfo, err := oauth2Service.Tokeninfo().IdToken(creds.Token).Context(ctx).Do()
+    if err != nil {
+        http.Error(w, "Failed to validate token", http.StatusUnauthorized)
+        return
+    }
+
+    expirationTime := time.Now().Add(24 * time.Hour)
+    claims := Claims{
+        UserID: tokenInfo.UserId,
+        StandardClaims: jwt.StandardClaims{
+            ExpiresAt: expirationTime.Unix(),
+        },
+    }
+
+    jwtKey := []byte("your_secret_key")
+    tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(jwtKey)
+    if err != nil {
+        http.Error(w, "Failed to generate JWT", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "token": tokenString,
+        "userData": map[string]string{
+            "email": tokenInfo.Email,
+        },
+    })
+}
+
+func dataHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]string{"data": "Your secured data"})
 }
