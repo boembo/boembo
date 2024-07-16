@@ -75,7 +75,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/auth/google", googleAuthHandler)
 	mux.HandleFunc("/api/data", dataHandler) // Example endpoint to test CORS
-
+	mux.HandleFunc("/api/user", userHandler)
 	// Add CORS middleware
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
@@ -86,6 +86,41 @@ func main() {
 
 	log.Println("Server started at :3000")
 	http.ListenAndServe(":3000", handler)
+}
+
+func userHandler(w http.ResponseWriter, r *http.Request) {
+    // 1. Get the token from the Authorization header
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString := authHeader[len("Bearer "):]
+
+    // 2. Parse and validate the JWT token
+    claims := &Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+
+    // 3. Fetch the user from the database based on the userID in the claims
+    var user User
+    if err := db.Where("id = ?", claims.UserID).First(&user).Error; err != nil {
+        if err == gorm.ErrRecordNotFound {
+            http.Error(w, "User not found", http.StatusNotFound)
+        } else {
+            http.Error(w, "Error fetching user data", http.StatusInternalServerError)
+        }
+        return
+    }
+
+    // 4. Send the user data in the response
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(user)
 }
 
 func googleAuthHandler(w http.ResponseWriter, r *http.Request) {
