@@ -1,4 +1,7 @@
 export default function TotalTaskWidget( { settings }) {
+
+console.log('TotalTaskWidget render');
+
     return (
             <div>
                 <h1>total task widget</h1>

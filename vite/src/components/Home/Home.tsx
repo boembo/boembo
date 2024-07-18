@@ -1,23 +1,23 @@
-// src/components/Home/Home.js
-import React, { useEffect, lazy, Suspense, useState  } from 'react';
+import React, { useEffect, lazy, Suspense, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Drawer, AppShell, Button, Stack, Loader, ActionIcon, Title, Select, Checkbox } from '@mantine/core';
 import GridLayout from 'react-grid-layout';
 import { openDrawer, closeDrawer } from './drawerSlice';
 import { openWidgetSettings, closeWidgetSettings } from './widgetSettingsSlice';
-import { addWidget, updateLayout, updateWidgetSetting, fetchWidgetSettings   } from './layoutSlice';
+import { addWidget, updateLayout, updateWidgetSetting, fetchWidgetSettings } from './layoutSlice';
 import classes from './Home.module.css';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { IconSettings } from '@tabler/icons-react';
 import WidgetWrapper from './WidgetWrapper';
+
 const ReactGridLayout = GridLayout.WidthProvider(GridLayout);
 
 const availableWidgets = [
   {
     name: "Total Task Widget",
     component: './TotalTaskWidget',
-    grid: {x: 0, y: 0, w: 6, h: 3},
+    grid: { x: 0, y: 0, w: 6, h: 3 },
     setting: {
       showTitle: { type: "boolean", value: false },
       backgroundColor: {
@@ -30,10 +30,10 @@ const availableWidgets = [
       },
     },
   },
-{
+  {
     name: "Team Task Widget",
-    component: './TeamTaskWidget', // Lazy load the widget component
-    grid: {x: 0, y: 0, w: 8, h: 8},
+    component: './TeamTaskWidget',
+    grid: { x: 0, y: 0, w: 8, h: 8 },
     setting: {
       showTitle: { type: "boolean", value: false },
       backgroundColor: {
@@ -53,48 +53,30 @@ export function Home() {
   const drawerIsOpen = useSelector((state) => state.drawer.isOpen);
   const widgetSettingsIsOpen = useSelector((state) => state.widgetSettings.isOpen);
   const selectedWidgetId = useSelector((state) => state.widgetSettings.selectedWidgetId);
-  const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null); 
   const layout = useSelector((state) => state.layout.layout);
-    const status = useSelector((state) => state.layout.status);
+  const status = useSelector((state) => state.layout.status);
+  const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null);
 
-console.log('Home render');
-
-
-useEffect(() => {
-        if (status === 'idle') {
-console.log("idle and Fetch setting");
-            dispatch(fetchWidgetSettings ());
-        }
-console.log("use effect status");
-console.log(status);
-
-    }, [status]);
-
-if (status === 'idle' || status === 'loading') {
-        // Handle loading state
-        return <div>Loading...</div>;
+  useEffect(() => {
+    if (status === 'idle') {
+      dispatch(fetchWidgetSettings());
     }
+  }, [status, dispatch]);
 
-if (!Array.isArray(layout)) {
-        console.error('layout is not an array:', layout);
-        return <div>Error: Invalid layout state</div>;
-    }
-
-  const handleAddWidget = (widget) => {
+  const handleAddWidget = useCallback((widget) => {
     dispatch(addWidget(widget));
     dispatch(closeDrawer());
-  };
+  }, [dispatch]);
 
-  const handleSettingsClick = (widgetId, settings) => {
+  const handleSettingsClick = useCallback((widgetId, settings) => {
     dispatch(openWidgetSettings({ widgetId, settings }));
-setSelectedWidgetSettings(settings);
-  };
+    setSelectedWidgetSettings(settings);
+  }, [dispatch]);
 
-  const handleWidgetSettingChange = (settingName, value) => {
+  const handleWidgetSettingChange = useCallback((settingName, value) => {
     dispatch(updateWidgetSetting({ widgetId: selectedWidgetId, settingName, value }));
 
-// Update local selectedWidgetSettings immediately
-   setSelectedWidgetSettings((prevSettings) => {
+    setSelectedWidgetSettings((prevSettings) => {
       if (prevSettings) {
         return {
           ...prevSettings,
@@ -106,20 +88,22 @@ setSelectedWidgetSettings(settings);
       }
       return prevSettings;
     });
-  };
+  }, [dispatch, selectedWidgetId]);
 
-
-// Handle layout changes
-  const onLayoutChange = (newLayout) => {
-if(status === "succeeded") {
-
-    console.log("onLayoutChange"); // For debugging purposes
-       console.log(newLayout); // For debugging purposes
+  const onLayoutChange = useCallback((newLayout) => {
+    if (status === "succeeded") {
       dispatch(updateLayout(newLayout));
-       console.log(layout); // For debugging purposes
-}
+    }
+  }, [dispatch, status]);
 
-  };
+  if (status === 'idle' || status === 'loading') {
+    return <div>Loading...</div>;
+  }
+
+  if (!Array.isArray(layout)) {
+    console.error('layout is not an array:', layout);
+    return <div>Error: Invalid layout state</div>;
+  }
 
   return (
     <AppShell className="h-screen" padding="md">
@@ -127,23 +111,16 @@ if(status === "succeeded") {
         <div className="flex justify-end mb-4">
           <Button onClick={() => dispatch(openDrawer())}>Add Widget</Button>
         </div>
-        <ReactGridLayout className={classes.grid} cols={12} rowHeight={30} width={1200}
-            onLayoutChange={onLayoutChange}>
+        <ReactGridLayout className={classes.grid} cols={12} rowHeight={30} width={1200} onLayoutChange={onLayoutChange}>
           {layout.map((item) => {
             const WidgetComponent = lazy(() => import(`${item.widget}`));
 
             return (
               <div key={item.i} data-grid={item.grid}>
                 <WidgetWrapper id={item.i} settings={item.setting} onSettingsClick={handleSettingsClick}>
-                <Suspense key={`${item.i}`}
-                  fallback={
-                    <div className="flex items-center justify-center h-full">
-                      <Loader />
-                    </div>
-                  }
-                >
-                  <WidgetComponent settings={item.setting} />
-                </Suspense>
+                  <Suspense fallback={<Loader />}>
+                    <WidgetComponent settings={item.setting} />
+                  </Suspense>
                 </WidgetWrapper>
               </div>
             );
@@ -192,3 +169,5 @@ if(status === "succeeded") {
     </AppShell>
   );
 }
+
+export default Home;
