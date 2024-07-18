@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
-"fmt"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
@@ -37,6 +37,15 @@ type User struct {
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
+type UserSetting struct {
+	ID        uuid.UUID      `gorm:"type:char(36);primaryKey"`
+	UserID    uuid.UUID      `gorm:"type:char(36);not null"`
+	Type      string         `gorm:"not null"`
+	Settings  string		`gorm:"type:json;not null"`
+	CreatedAt time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
+}
+
 var db *gorm.DB
 
 func connectDB() {
@@ -58,7 +67,7 @@ func connectDB() {
 	log.Println("Connected to database")
 
 	// Auto Migrate tables
-	err = db.AutoMigrate(&User{})
+	err = db.AutoMigrate(&User{}, &UserSetting{})
 	if err != nil {
 		log.Fatalf("Failed to auto migrate tables: %v", err)
 	}
@@ -76,6 +85,8 @@ func main() {
 	mux.HandleFunc("/api/auth/google", googleAuthHandler)
 	mux.HandleFunc("/api/data", dataHandler) // Example endpoint to test CORS
 	mux.HandleFunc("/api/user", userHandler)
+	mux.HandleFunc("/api/settings/save", saveSettingsHandler)
+	mux.HandleFunc("/api/widgetSettings", getSettingsHandler)
 	// Add CORS middleware
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
@@ -89,38 +100,38 @@ func main() {
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
-    // 1. Get the token from the Authorization header
-    authHeader := r.Header.Get("Authorization")
-    if authHeader == "" {
-        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
-        return
-    }
-    tokenString := authHeader[len("Bearer "):]
+	// 1. Get the token from the Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+		return
+	}
+	tokenString := authHeader[len("Bearer "):]
 
-    // 2. Parse and validate the JWT token
-    claims := &Claims{}
-    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-        return []byte(os.Getenv("JWT_SECRET")), nil
-    })
-    if err != nil || !token.Valid {
-        http.Error(w, "Invalid token", http.StatusUnauthorized)
-        return
-    }
+	// 2. Parse and validate the JWT token
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
 
-    // 3. Fetch the user from the database based on the userID in the claims
-    var user User
-    if err := db.Where("id = ?", claims.UserID).First(&user).Error; err != nil {
-        if err == gorm.ErrRecordNotFound {
-            http.Error(w, "User not found", http.StatusNotFound)
-        } else {
-            http.Error(w, "Error fetching user data", http.StatusInternalServerError)
-        }
-        return
-    }
+	// 3. Fetch the user from the database based on the userID in the claims
+	var user User
+	if err := db.Where("id = ?", claims.UserID).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error fetching user data", http.StatusInternalServerError)
+		}
+		return
+	}
 
-    // 4. Send the user data in the response
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(user)
+	// 4. Send the user data in the response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
 }
 
 func googleAuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +156,7 @@ func googleAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user exists in database, create if not
-	var user User
+	var user User 
 	result := db.Where("email = ?", tokenInfo.Email).First(&user)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		http.Error(w, "Failed to query database", http.StatusInternalServerError)
@@ -199,4 +210,114 @@ func googleAuthHandler(w http.ResponseWriter, r *http.Request) {
 func dataHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"data": "Your secured data"})
+}
+
+func saveSettingsHandler(w http.ResponseWriter, r *http.Request) {
+    log.Println("start save setting")
+
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString := authHeader[len("Bearer "):]
+
+    claims := &Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+
+    // Parse request body to get new layout settings
+    var newSettings map[string]interface{}
+    if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Convert new settings to JSON string
+    settingsJSON, err := json.Marshal(newSettings["newLayout"])
+    if err != nil {
+        http.Error(w, "Failed to serialize settings", http.StatusInternalServerError)
+        return
+    }
+
+    // Check if the user already has layout settings
+    var userSetting UserSetting
+    result := db.Where("user_id = ? AND type = ?", claims.UserID, "layout_settings").First(&userSetting)
+
+    if result.Error == nil {
+        // Update existing setting
+        userSetting.Settings = string(settingsJSON)
+        userSetting.UpdatedAt = time.Now()
+
+        if err := db.Save(&userSetting).Error; err != nil {
+            http.Error(w, "Failed to update user settings: "+err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+    } else if result.Error == gorm.ErrRecordNotFound {
+        // Create new setting if not found
+        userSetting = UserSetting{
+            ID:        uuid.New(),
+            UserID:    uuid.MustParse(claims.UserID),
+            Type:      "layout_settings",
+            Settings:  string(settingsJSON),
+            CreatedAt: time.Now(),
+            UpdatedAt: time.Now(),
+        }
+
+        if err := db.Create(&userSetting).Error; err != nil {
+            http.Error(w, "Failed to save user settings: "+err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusCreated)
+    } else {
+        // Handle other possible errors
+        http.Error(w, "Failed to query user settings: "+result.Error.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with success message or the updated user setting
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Layout settings saved successfully",
+        "data":    userSetting,
+    })
+}
+
+
+
+
+
+func getSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+		return
+	}
+	tokenString := authHeader[len("Bearer "):]
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	var userSettings UserSetting
+	err = db.Where("user_id = ?", claims.UserID).First(&userSettings).Error
+	if err != nil {
+		http.Error(w, "Failed to retrieve user settings", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(userSettings.Settings)
 }

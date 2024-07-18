@@ -1,11 +1,11 @@
 // src/components/Home/Home.js
-import React, { lazy, Suspense, useState  } from 'react';
+import React, { useEffect, lazy, Suspense, useState  } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Drawer, AppShell, Button, Stack, Loader, ActionIcon, Title, Select, Checkbox } from '@mantine/core';
 import GridLayout from 'react-grid-layout';
 import { openDrawer, closeDrawer } from './drawerSlice';
 import { openWidgetSettings, closeWidgetSettings } from './widgetSettingsSlice';
-import { addWidget, updateLayout, updateWidgetSetting } from './layoutSlice';
+import { addWidget, updateLayout, updateWidgetSetting, fetchWidgetSettings   } from './layoutSlice';
 import classes from './Home.module.css';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -55,6 +55,30 @@ export function Home() {
   const selectedWidgetId = useSelector((state) => state.widgetSettings.selectedWidgetId);
   const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null); 
   const layout = useSelector((state) => state.layout.layout);
+    const status = useSelector((state) => state.layout.status);
+
+console.log('Home render');
+
+
+useEffect(() => {
+        if (status === 'idle') {
+console.log("idle and Fetch setting");
+            dispatch(fetchWidgetSettings ());
+        }
+console.log("use effect status");
+console.log(status);
+
+    }, [status]);
+
+if (status === 'idle' || status === 'loading') {
+        // Handle loading state
+        return <div>Loading...</div>;
+    }
+
+if (!Array.isArray(layout)) {
+        console.error('layout is not an array:', layout);
+        return <div>Error: Invalid layout state</div>;
+    }
 
   const handleAddWidget = (widget) => {
     dispatch(addWidget(widget));
@@ -87,8 +111,14 @@ setSelectedWidgetSettings(settings);
 
 // Handle layout changes
   const onLayoutChange = (newLayout) => {
-    console.log(newLayout); // For debugging purposes
-    dispatch(updateLayout(newLayout));
+if(status === "succeeded") {
+
+    console.log("onLayoutChange"); // For debugging purposes
+       console.log(newLayout); // For debugging purposes
+      dispatch(updateLayout(newLayout));
+       console.log(layout); // For debugging purposes
+}
+
   };
 
   return (

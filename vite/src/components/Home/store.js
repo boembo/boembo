@@ -3,7 +3,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import createSagaMiddleware from 'redux-saga';
 import drawerReducer from './drawerSlice';
 import widgetSettingsReducer from './widgetSettingsSlice';
-import layoutReducer from './layoutSlice';
+import layoutReducer, {layoutMiddleware} from './layoutSlice';
 import rootSaga from './sagas';
 
 const sagaMiddleware = createSagaMiddleware();
@@ -15,7 +15,7 @@ const store = configureStore({
         layout: layoutReducer,
     },
     middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(sagaMiddleware),
+        getDefaultMiddleware().concat(sagaMiddleware).concat(layoutMiddleware),
 });
 
 sagaMiddleware.run(rootSaga);
