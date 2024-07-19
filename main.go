@@ -50,6 +50,7 @@ type Project struct {
 	ID        uuid.UUID `gorm:"type:char(36);primaryKey"`
 	Name      string    `gorm:"not null"`
 	UserID    uuid.UUID `gorm:"type:char(36);not null"`
+	Pinned    bool      `gorm:"default:false"` // Add this field
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
@@ -98,6 +99,7 @@ func main() {
 	mux.HandleFunc("/api/widgetSettings", getSettingsHandler)
 mux.HandleFunc("/api/projects", getProjectsHandler)
 	mux.HandleFunc("/api/projects/save", createProjectHandler)
+mux.HandleFunc("/api/projects/pin", pinProjectHandler)
 	// Add CORS middleware
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
@@ -403,6 +405,59 @@ func createProjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := db.Create(&project).Error; err != nil {
 		http.Error(w, "Error creating project", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(project)
+}
+
+
+
+func pinProjectHandler(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+		return
+	}
+	tokenString := authHeader[len("Bearer "):]
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		ProjectID uuid.UUID `json:"project_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	if req.ProjectID == uuid.Nil {
+		http.Error(w, "Project ID cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	var project Project
+	if err := db.Where("id = ?", req.ProjectID).First(&project).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "Project not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error fetching project", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Update the project's pinned status
+	project.Pinned = !project.Pinned
+	if err := db.Save(&project).Error; err != nil {
+		http.Error(w, "Error updating project", http.StatusInternalServerError)
 		return
 	}
 

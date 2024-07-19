@@ -1,16 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // Import useNavigate for navigation
-import { UnstyledButton, Tooltip, Title, rem } from '@mantine/core';
-import {
-  IconHome2,
-  IconGauge,
-  IconDeviceDesktopAnalytics,
-  IconFingerprint,
-  IconCalendarStats,
-  IconUser,
-  IconSettings,
-  IconPlus
-} from '@tabler/icons-react';
+import { useNavigate, useParams } from 'react-router-dom'; 
+import { UnstyledButton, Tooltip, Title, rem, ActionIcon } from '@mantine/core';
+import { IconHome2, IconGauge, IconDeviceDesktopAnalytics, IconFingerprint, IconCalendarStats, IconUser, IconSettings, IconPlus, IconPin } from '@tabler/icons-react';
 import { MantineLogo } from '@mantinex/mantine-logo';
 import classes from './DoubleNavbar.module.css';
 import axios from 'axios';
@@ -42,11 +33,12 @@ const linksMockdata = [
 
 export function DoubleNavbar() {
   const [active, setActive] = useState('Home');
-  const [activeLink, setActiveLink] = useState<string | null>(null); // Track active link by ID
+  const [activeLink, setActiveLink] = useState<string | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
+  const [pinnedProjects, setPinnedProjects] = useState<any[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation(); // Get current location
+  const { id } = useParams(); // Get project ID from URL if applicable
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -58,7 +50,12 @@ export function DoubleNavbar() {
         const data = response.data;
 
         if (Array.isArray(data.projects)) {
-          setProjects(data.projects); // Ensure projects is set to an array
+          const allProjects = data.projects;
+          const pinned = allProjects.filter(project => project.Pinned); // Adjust based on your flag name
+          const nonPinned = allProjects.filter(project => !project.Pinned); // Adjust based on your flag name
+
+          setPinnedProjects(pinned);
+          setProjects(nonPinned);
         } else {
           console.error('Invalid projects data format:', data);
         }
@@ -71,31 +68,38 @@ export function DoubleNavbar() {
   }, []);
 
   useEffect(() => {
-    // Check if the current path is a project detail page
-    if (location.pathname.startsWith('/project/')) {
-      setActive('Home'); // Make Home active
-      const projectId = location.pathname.split('/').pop();
-      setActiveLink(projectId || null); // Set active link based on project ID
+    // If accessing a project detail, make Home active and set the project as active
+    if (id) {
+      setActive('Home');
+      setActiveLink(id);
     }
-  }, [location]);
+  }, [id]);
 
   const handleCreateProject = (newProject) => {
     setProjects((prevProjects) => {
       const updatedProjects = [...prevProjects, newProject];
-      setActive(newProject.ID); // Set the active project ID
-      navigate(`/project/${newProject.ID}`); // Redirect to the new project
+      setActive(newProject.ID);
+      navigate(`/project/${newProject.ID}`);
       return updatedProjects;
     });
     setShowCreateProject(false);
   };
 
-  const handleMainLinkClick = (label) => {
-    if (label === 'Home') {
-      navigate('/'); // Navigate to home
+  const handlePinProject = async (projectId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://localhost:3000/api/projects/pin', { project_id: projectId }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const updatedProject = response.data;
+
+      setProjects((prevProjects) =>
+        prevProjects.filter(project => project.ID !== updatedProject.ID)
+      );
+      setPinnedProjects((prevPinned) => [...prevPinned, updatedProject]);
+    } catch (error) {
+      console.error('Failed to pin project:', error);
     }
-    setActive(label);
-    setActiveLink(null); // Clear active link when changing main links
-    setShowCreateProject(false); // Hide create project button for other links
   };
 
   const mainLinks = mainLinksMockdata.map((link) => (
@@ -107,7 +111,13 @@ export function DoubleNavbar() {
       key={link.label}
     >
       <UnstyledButton
-        onClick={() => handleMainLinkClick(link.label)}
+        onClick={() => {
+          setActive(link.label);
+          setShowCreateProject(false);
+          if (link.label === 'Home') {
+            navigate('/');
+          }
+        }}
         className={classes.mainLink}
         data-active={link.label === active || undefined}
       >
@@ -116,30 +126,40 @@ export function DoubleNavbar() {
     </Tooltip>
   ));
 
-  const links = linksMockdata.map((link) => (
-    <a
-      className={classes.link}
-      data-active={activeLink === link || undefined}
-      href="#"
-      onClick={(event) => {
-        event.preventDefault();
-        setActiveLink(link); // Set active based on the link
-      }}
-      key={link} // Ensure each link has a unique key
-    >
-      {link}
-    </a>
+  const projectLinks = projects.map((project) => (
+    <div className={classes.projectItem} key={project.ID}>
+      <a
+        className={classes.link}
+        data-active={activeLink === project.ID || undefined}
+        href="#"
+        onClick={(event) => {
+          event.preventDefault();
+          setActiveLink(project.ID);
+          navigate(`/project/${project.ID}`);
+        }}
+      >
+        {project.Name}
+      </a>
+      <Tooltip label="Pin project" position="left" withArrow>
+        <ActionIcon
+          className={classes.pinButton}
+          onClick={() => handlePinProject(project.ID)}
+        >
+          <IconPin size={rem(16)} stroke={1.5} />
+        </ActionIcon>
+      </Tooltip>
+    </div>
   ));
 
-  const projectLinks = projects.map((project) => (
+  const pinnedProjectLinks = pinnedProjects.map((project) => (
     <a
       className={classes.link}
       data-active={activeLink === project.ID || undefined}
       href="#"
       onClick={(event) => {
         event.preventDefault();
-        setActiveLink(project.ID); // Set active based on project ID
-        navigate(`/project/${project.ID}`); // Redirect to the project page
+        setActiveLink(project.ID);
+        navigate(`/project/${project.ID}`);
       }}
       key={project.ID}
     >
@@ -184,15 +204,41 @@ export function DoubleNavbar() {
                   />
                 )}
                 <div className={classes.projectsList}>
-                  {projectLinks.length > 0 ? (
-                    projectLinks
-                  ) : (
-                    <p>No projects available</p>
+                  {pinnedProjects.length > 0 && (
+                    <div className={classes.pinnedProjects}>
+                      <Title order={6}>Pinned Projects</Title>
+                      {pinnedProjectLinks}
+                    </div>
                   )}
+                  <div className={classes.projectList}>
+                    {projects.length > 0 ? (
+                      <>
+                        {pinnedProjects.length > 0 && (
+                          <Title order={6}>Other Projects</Title>
+                        )}
+                        {projectLinks}
+                      </>
+                    ) : (
+                      <p>No projects available</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
-            {active !== 'Home' && links}
+            {active !== 'Home' && linksMockdata.map((link) => (
+              <a
+                className={classes.link}
+                data-active={activeLink === link || undefined}
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setActiveLink(link);
+                }}
+                key={link}
+              >
+                {link}
+              </a>
+            ))}
           </div>
         </div>
       </div>

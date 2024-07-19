@@ -100,3 +100,25 @@
     }
 }
 
+.projectItem {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.pinButton {
+    margin-left: var(--mantine-spacing-sm);
+    visibility: hidden;
+}
+
+.projectItem:hover .pinButton {
+    visibility: visible;
+}
+
+.pinnedProjects {
+    margin-bottom: var(--mantine-spacing-md);
+}
+
+.projectList {
+    margin-top: var(--mantine-spacing-md);
+}
