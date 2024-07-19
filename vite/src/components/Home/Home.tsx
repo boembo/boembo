@@ -1,6 +1,6 @@
 import React, { useEffect, lazy, Suspense, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Drawer, AppShell, Button, Stack, Loader, ActionIcon, Title, Select, Checkbox } from '@mantine/core';
+import { Drawer, AppShell, Button, Stack, Loader, Title, Select, Checkbox } from '@mantine/core';
 import GridLayout from 'react-grid-layout';
 import { openDrawer, closeDrawer } from './drawerSlice';
 import { openWidgetSettings, closeWidgetSettings } from './widgetSettingsSlice';
@@ -8,45 +8,9 @@ import { addWidget, updateLayout, updateWidgetSetting, fetchWidgetSettings } fro
 import classes from './Home.module.css';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { IconSettings } from '@tabler/icons-react';
 import WidgetWrapper from './WidgetWrapper';
 
 const ReactGridLayout = GridLayout.WidthProvider(GridLayout);
-
-const availableWidgets = [
-  {
-    name: "Total Task Widget",
-    component: './TotalTaskWidget',
-    grid: { x: 0, y: 0, w: 6, h: 3 },
-    setting: {
-      showTitle: { type: "boolean", value: false },
-      backgroundColor: {
-        type: "select",
-        value: "red",
-        options: [
-          { value: "red", label: "Red" },
-          { value: "blue", label: "Blue" },
-        ],
-      },
-    },
-  },
-  {
-    name: "Team Task Widget",
-    component: './TeamTaskWidget',
-    grid: { x: 0, y: 0, w: 8, h: 8 },
-    setting: {
-      showTitle: { type: "boolean", value: false },
-      backgroundColor: {
-        type: "select",
-        value: "green",
-        options: [
-          { value: "green", label: "Green" },
-          { value: "yellow", label: "Yellow" },
-        ],
-      },
-    },
-  },
-];
 
 export function Home() {
   const dispatch = useDispatch();
@@ -54,11 +18,14 @@ export function Home() {
   const widgetSettingsIsOpen = useSelector((state) => state.widgetSettings.isOpen);
   const selectedWidgetId = useSelector((state) => state.widgetSettings.selectedWidgetId);
   const layout = useSelector((state) => state.layout.layout);
+const widgetSetting = useSelector((state) => state.layout.widgetSettings);
   const status = useSelector((state) => state.layout.status);
   const [selectedWidgetSettings, setSelectedWidgetSettings] = useState(null);
+const availableWidgets = useSelector((state) => state.layout.availableWidgets);
 
   useEffect(() => {
     if (status === 'idle') {
+//dispatch(fetchAvailableWidgets());
       dispatch(fetchWidgetSettings());
     }
   }, [status, dispatch]);
@@ -67,6 +34,13 @@ export function Home() {
     dispatch(addWidget(widget));
     dispatch(closeDrawer());
   }, [dispatch]);
+
+
+ useEffect(() => {
+    console.log("layout changed");
+console.log(layout);
+  }, [layout]);
+
 
   const handleSettingsClick = useCallback((widgetId, settings) => {
     dispatch(openWidgetSettings({ widgetId, settings }));
@@ -117,9 +91,9 @@ export function Home() {
 
             return (
               <div key={item.i} data-grid={item.grid}>
-                <WidgetWrapper id={item.i} settings={item.setting} onSettingsClick={handleSettingsClick}>
+                <WidgetWrapper id={item.i} settings={widgetSetting[item.i]} onSettingsClick={handleSettingsClick}>
                   <Suspense fallback={<Loader />}>
-                    <WidgetComponent settings={item.setting} />
+                    <WidgetComponent settings={widgetSetting[item.i]} />
                   </Suspense>
                 </WidgetWrapper>
               </div>

@@ -1,13 +1,50 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-// Assuming you have a selector to retrieve the token from your Redux state
 
-// Define the initial state without the layout
+
+const availableWidgets = [
+    {
+        name: "Total Task Widget",
+        component: './TotalTaskWidget',
+        grid: {x: 0, y: 0, w: 6, h: 3},
+        setting: {
+            showTitle: {type: "boolean", value: false},
+            backgroundColor: {
+                type: "select",
+                value: "red",
+                options: [
+                    {value: "red", label: "Red"},
+                    {value: "blue", label: "Blue"},
+                ],
+            },
+        },
+    },
+    {
+        name: "Team Task Widget",
+        component: './TeamTaskWidget',
+        grid: {x: 0, y: 0, w: 8, h: 8},
+        setting: {
+            showTitle: {type: "boolean", value: false},
+            backgroundColor: {
+                type: "select",
+                value: "green",
+                options: [
+                    {value: "green", label: "Green"},
+                    {value: "yellow", label: "Yellow"},
+                ],
+            },
+        },
+    },
+];
+
+// Define the initial state
 const initialState = {
-    layout: [], // Initially empty, will be filled with API data
-    status: 'idle', // Status to track async operation state
-    error: null, // Error handling
+    layout: [],
+    widgetSettings: {}, // Changed to an object for easier lookup
+    availableWidgets: availableWidgets,
+    status: 'idle',
+    error: null,
 };
 
 // Async thunk to fetch widget settings from API
@@ -15,7 +52,6 @@ export const fetchWidgetSettings = createAsyncThunk(
         'layout/fetchWidgetSettings',
         async (_, { getState }) => {
     try {
-        console.log("FETCH SETTINGS");
         const token = localStorage.getItem('token');
         const response = await axios.get('http://localhost:3000/api/widgetSettings', {
             headers: {Authorization: `Bearer ${token}`},
@@ -33,13 +69,11 @@ export const updateLayoutSettings = createAsyncThunk(
         'layout/updateLayoutSettings',
         async (updatedLayout, { getState }) => {
     try {
-        console.log("Start update layoutSetting")
+        const updateData = {layout: updatedLayout.layout, widgetSettings: updatedLayout.widgetSettings}
         const token = localStorage.getItem('token');
-        const response = await axios.put('http://localhost:3000/api/settings/save', {newLayout: updatedLayout}, {
+        const response = await axios.put('http://localhost:3000/api/settings/save', {newLayout: updateData}, {
             headers: {Authorization: `Bearer ${token}`},
         });
-
-
         return response.data;
     } catch (error) {
         // More specific error handling
@@ -53,15 +87,12 @@ export const updateLayoutSettings = createAsyncThunk(
 }
 );
 
-
-
 // Create layout slice with reducers and async thunk
 const layoutSlice = createSlice({
     name: 'layout',
     initialState,
     reducers: {
         addWidget(state, action) {
-            console.log("addWidget");
             const newWidget = {
                 i: `${action.payload.name}${state.layout.length}`,
                 widget: action.payload.component,
@@ -71,39 +102,37 @@ const layoutSlice = createSlice({
                     w: action.payload.grid.w || 6,
                     h: action.payload.grid.h || 3,
                 },
-                setting: action.payload.setting,
             };
-            state.layout.unshift(newWidget);
 
-//            state.status = 'loading'; // Optional: Update loading status
-            // Dispatch the async thunk
-//            updateLayoutSettings(state.layout);
+            // Check if settings exist, if not, use default settings from availableWidgets
+            const defaultSettings = availableWidgets.find(widget => widget.name === action.payload.name).setting;
+            console.log("defaultSettings");
+            console.log(defaultSettings);
+            state.widgetSettings = {
+                ...state.widgetSettings,
+                [newWidget.i]: defaultSettings,
+            };
+
+            console.log("state.widgetSettings");
+            console.log(state.widgetSettings);
+
+            state.layout.unshift(newWidget);
         },
         updateLayout(state, action) {
-            console.log("update layout action");
             state.layout = state.layout.map((widget) => {
                 const updatedWidget = action.payload.find((item) => item.i === widget.i);
                 return updatedWidget ? {...widget, grid: updatedWidget} : widget;
             });
         },
         updateWidgetSetting(state, action) {
-            console.log("update widgetSetting");
             const {widgetId, settingName, value} = action.payload;
-            state.layout = state.layout.map((widget) => {
-                if (widget.i === widgetId) {
-                    return {
-                        ...widget,
-                        setting: {
-                            ...widget.setting,
-                            [settingName]: {
-                                ...widget.setting[settingName],
-                                value,
-                            },
-                        },
-                    };
-                }
-                return widget;
-            });
+            state.widgetSettings[widgetId] = {
+                ...state.widgetSettings[widgetId],
+                [settingName]: {
+                    ...state.widgetSettings[widgetId][settingName],
+                    value,
+                },
+            };
         },
     },
     extraReducers: (builder) => {
@@ -113,7 +142,14 @@ const layoutSlice = createSlice({
                 })
                 .addCase(fetchWidgetSettings.fulfilled, (state, action) => {
                     state.status = 'succeeded';
-                    state.layout = JSON.parse(action.payload);
+                    const data = JSON.parse(action.payload);
+                    console.log("data from fetch API");
+                    console.log(data);
+                    state.layout = data.layout || [];
+                    state.widgetSettings = data.widgetSettings || {};
+
+                    // Merge fetched settings with default settings if any are missing
+
                 })
                 .addCase(fetchWidgetSettings.rejected, (state, action) => {
                     state.status = 'failed';
@@ -133,7 +169,6 @@ const layoutSlice = createSlice({
 });
 
 export const {addWidget, updateLayout, updateWidgetSetting} = layoutSlice.actions;
-
 // Middleware to handle triggering updateLayoutSettings thunk on layout changes
 export const layoutMiddleware = (store) => (next) => (action) => {
             const result = next(action);
@@ -143,11 +178,10 @@ export const layoutMiddleware = (store) => (next) => (action) => {
                     action.type === 'layout/addWidget') {
 
                 console.log("CALL update layout");
-                const updatedLayout = store.getState().layout.layout;
-                store.dispatch(updateLayoutSettings(updatedLayout));
+                const updatedSetting = store.getState().layout;
+                store.dispatch(updateLayoutSettings(updatedSetting));
             }
 
             return result;
         };
-
 export default layoutSlice.reducer;
