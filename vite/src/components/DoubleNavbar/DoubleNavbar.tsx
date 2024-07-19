@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // Import useNavigate for navigation and useLocation for route handling
+import { useNavigate, useLocation } from 'react-router-dom'; // Import useNavigate for navigation
 import { UnstyledButton, Tooltip, Title, rem } from '@mantine/core';
 import {
   IconHome2,
@@ -46,7 +46,7 @@ export function DoubleNavbar() {
   const [projects, setProjects] = useState<any[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation(); // Use location to determine the current route
+  const location = useLocation(); // Get current location
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -59,18 +59,6 @@ export function DoubleNavbar() {
 
         if (Array.isArray(data.projects)) {
           setProjects(data.projects); // Ensure projects is set to an array
-
-          const pathSegments = location.pathname.split('/');
-          if (pathSegments[1] === 'project' && pathSegments[2]) {
-            // If the route is /project/:id
-            const projectId = pathSegments[2];
-            setActive('Projects'); // Set the active menu to 'Projects'
-            setActiveLink(projectId); // Set the active link to the project ID
-          } else if (pathSegments[1] === '') {
-            // If the route is just / (home)
-            setActive('Home');
-            setActiveLink(null);
-          }
         } else {
           console.error('Invalid projects data format:', data);
         }
@@ -80,17 +68,34 @@ export function DoubleNavbar() {
     };
 
     fetchProjects();
-  }, [location.pathname]); // Depend on location.pathname to handle route changes
+  }, []);
+
+  useEffect(() => {
+    // Check if the current path is a project detail page
+    if (location.pathname.startsWith('/project/')) {
+      setActive('Home'); // Make Home active
+      const projectId = location.pathname.split('/').pop();
+      setActiveLink(projectId || null); // Set active link based on project ID
+    }
+  }, [location]);
 
   const handleCreateProject = (newProject) => {
     setProjects((prevProjects) => {
       const updatedProjects = [...prevProjects, newProject];
-      setActive('Projects'); // Ensure 'Projects' is active
-      setActiveLink(newProject.ID); // Set the active link by project ID
+      setActive(newProject.ID); // Set the active project ID
       navigate(`/project/${newProject.ID}`); // Redirect to the new project
       return updatedProjects;
     });
     setShowCreateProject(false);
+  };
+
+  const handleMainLinkClick = (label) => {
+    if (label === 'Home') {
+      navigate('/'); // Navigate to home
+    }
+    setActive(label);
+    setActiveLink(null); // Clear active link when changing main links
+    setShowCreateProject(false); // Hide create project button for other links
   };
 
   const mainLinks = mainLinksMockdata.map((link) => (
@@ -102,14 +107,7 @@ export function DoubleNavbar() {
       key={link.label}
     >
       <UnstyledButton
-        onClick={() => {
-          setActive(link.label);
-          setActiveLink(null); // Reset active link when changing to main links
-          setShowCreateProject(false);
-          if (link.label === 'Home') {
-            navigate('/'); // Navigate to home
-          }
-        }}
+        onClick={() => handleMainLinkClick(link.label)}
         className={classes.mainLink}
         data-active={link.label === active || undefined}
       >
@@ -125,8 +123,7 @@ export function DoubleNavbar() {
       href="#"
       onClick={(event) => {
         event.preventDefault();
-        setActive(link);
-        setActiveLink(null); // Reset active link when changing to main links
+        setActiveLink(link); // Set active based on the link
       }}
       key={link} // Ensure each link has a unique key
     >
@@ -141,13 +138,12 @@ export function DoubleNavbar() {
       href="#"
       onClick={(event) => {
         event.preventDefault();
-        setActive('Projects'); // Set the active menu to 'Projects'
-        setActiveLink(project.ID); // Set the active link by project ID
+        setActiveLink(project.ID); // Set active based on project ID
         navigate(`/project/${project.ID}`); // Redirect to the project page
       }}
       key={project.ID}
     >
-      {project.Name} {/* Display only the project name */}
+      {project.Name}
     </a>
   ));
 
@@ -163,7 +159,7 @@ export function DoubleNavbar() {
         <div className={classes.main}>
           <div className={classes.header}>
             <Title order={4} className={classes.title}>
-              {active === 'Home' ? 'Projects' : active}
+              {active}
             </Title>
             {active === 'Home' && (
               <div className={classes.actions}>
@@ -196,8 +192,7 @@ export function DoubleNavbar() {
                 </div>
               </div>
             )}
-            {active === 'Projects' && projectLinks}
-            {active !== 'Home' && active !== 'Projects' && links}
+            {active !== 'Home' && links}
           </div>
         </div>
       </div>
