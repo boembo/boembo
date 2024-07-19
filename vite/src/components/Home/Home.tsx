@@ -55,15 +55,6 @@ console.log(widgetId);
 
   const handleWidgetSettingChange = (settingName, value) => {
     dispatch(updateWidgetSetting({ widgetId: selectedWidgetId, settingName, value }));
-
-const settings = widgetSetting[selectedWidgetId];
-    setSelectedWidgetSettings({
-          ...settings,
-          [settingName]: {
-            ...settings[settingName],
-            value: value,
-          },
-        });
   };
 
   const onLayoutChange = (newLayout) => {

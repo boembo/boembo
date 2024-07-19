@@ -77,10 +77,10 @@ export function HeaderTabs() {
                     <Avatar src={user.image} alt={user.name} radius="xl" size={20} />
                     <div>
                       <Text fw={500} size="sm" lh={1} mr={1}>
-                        {user.email}
+                        {user.Email}
                       </Text>
                       <Text size="sm" color="dimmed">
-                        {user.name}
+                        {user.Name}
                       </Text>
                     </div>
                     <IconChevronDown style={{ width: rem(12), height: rem(12) }} stroke={1.5} />

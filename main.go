@@ -46,6 +46,15 @@ type UserSetting struct {
 	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
 }
 
+type Project struct {
+	ID        uuid.UUID `gorm:"type:char(36);primaryKey"`
+	Name      string    `gorm:"not null"`
+	UserID    uuid.UUID `gorm:"type:char(36);not null"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+}
+
+
 var db *gorm.DB
 
 func connectDB() {
@@ -67,7 +76,7 @@ func connectDB() {
 	log.Println("Connected to database")
 
 	// Auto Migrate tables
-	err = db.AutoMigrate(&User{}, &UserSetting{})
+	err = db.AutoMigrate(&User{}, &UserSetting{}, &Project{})
 	if err != nil {
 		log.Fatalf("Failed to auto migrate tables: %v", err)
 	}
@@ -87,6 +96,8 @@ func main() {
 	mux.HandleFunc("/api/user", userHandler)
 	mux.HandleFunc("/api/settings/save", saveSettingsHandler)
 	mux.HandleFunc("/api/widgetSettings", getSettingsHandler)
+mux.HandleFunc("/api/projects", getProjectsHandler)
+	mux.HandleFunc("/api/projects/save", createProjectHandler)
 	// Add CORS middleware
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
@@ -320,4 +331,81 @@ func getSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(userSettings.Settings)
+}
+
+
+func getProjectsHandler(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+		return
+	}
+	tokenString := authHeader[len("Bearer "):]
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	userID := uuid.MustParse(claims.UserID)
+	var projects []Project
+	if err := db.Where("user_id = ?", userID).Find(&projects).Error; err != nil {
+		http.Error(w, "Error fetching projects", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string][]Project{"projects": projects})
+}
+
+func createProjectHandler(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+		return
+	}
+	tokenString := authHeader[len("Bearer "):]
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" {
+		http.Error(w, "Project name cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	userID := uuid.MustParse(claims.UserID)
+	project := Project{
+		ID:        uuid.New(),
+		Name:      req.Name,
+		UserID:    userID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.Create(&project).Error; err != nil {
+		http.Error(w, "Error creating project", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(project)
 }
