@@ -30,10 +30,10 @@ const availableWidgets = useSelector((state) => state.layout.availableWidgets);
     }
   }, [status, dispatch]);
 
-  const handleAddWidget = useCallback((widget) => {
+  const handleAddWidget = (widget) => {
     dispatch(addWidget(widget));
     dispatch(closeDrawer());
-  }, [dispatch]);
+  };
 
 
  useEffect(() => {
@@ -42,38 +42,36 @@ console.log(layout);
   }, [layout]);
 
 
-  const handleSettingsClick = useCallback((widgetId, settings) => {
+  const handleSettingsClick = (widgetId) => {
+console.log("handleSettingsClick");
+console.log(widgetSetting);
+const settings = widgetSetting[widgetId];
+
+console.log(settings);
+console.log(widgetId);
     dispatch(openWidgetSettings({ widgetId, settings }));
     setSelectedWidgetSettings(settings);
-  }, [dispatch]);
-
-  const handleWidgetSettingChange = useCallback((settingName, value) => {
-    dispatch(updateWidgetSetting({ widgetId: selectedWidgetId, settingName, value }));
-
-    setSelectedWidgetSettings((prevSettings) => {
-      if (prevSettings) {
-        return {
-          ...prevSettings,
-          [settingName]: {
-            ...prevSettings[settingName],
-            value: value,
-          },
-        };
-      }
-      return prevSettings;
-    });
-  }, [dispatch, selectedWidgetId]);
-
-  const onLayoutChange = useCallback((newLayout) => {
-    if (status === "succeeded") {
-      dispatch(updateLayout(newLayout));
-    }
-  }, [dispatch, status]);
-
-  if (status === 'idle' || status === 'loading') {
-    return <div>Loading...</div>;
   }
 
+  const handleWidgetSettingChange = (settingName, value) => {
+    dispatch(updateWidgetSetting({ widgetId: selectedWidgetId, settingName, value }));
+
+const settings = widgetSetting[selectedWidgetId];
+    setSelectedWidgetSettings({
+          ...settings,
+          [settingName]: {
+            ...settings[settingName],
+            value: value,
+          },
+        });
+  };
+
+  const onLayoutChange = (newLayout) => {
+    
+      dispatch(updateLayout(newLayout));
+  };
+
+  
   if (!Array.isArray(layout)) {
     console.error('layout is not an array:', layout);
     return <div>Error: Invalid layout state</div>;
@@ -91,9 +89,9 @@ console.log(layout);
 
             return (
               <div key={item.i} data-grid={item.grid}>
-                <WidgetWrapper id={item.i} settings={widgetSetting[item.i]} onSettingsClick={handleSettingsClick}>
+                <WidgetWrapper id={item.i}  onSettingsClick={handleSettingsClick}>
                   <Suspense fallback={<Loader />}>
-                    <WidgetComponent settings={widgetSetting[item.i]} />
+                    <WidgetComponent id={item.i} />
                   </Suspense>
                 </WidgetWrapper>
               </div>
@@ -118,7 +116,7 @@ console.log(layout);
         <div className="p-4">
           <Title order={4}>Settings</Title>
           <Stack>
-            {Object.entries(selectedWidgetSettings || {}).map(([settingName, setting]) => (
+            {Object.entries(widgetSetting[selectedWidgetId] || {}).map(([settingName, setting]) => (
               <div key={settingName}>
                 {setting.type === "boolean" && (
                   <Checkbox

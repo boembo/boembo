@@ -1,7 +1,10 @@
 import { useDispatch, useSelector } from 'react-redux';
+import { addWidget, updateLayout, updateWidgetSetting, fetchWidgetSettings } from './layoutSlice';
 
+export default function TotalTaskWidget( { id }) {
 
-export default function TotalTaskWidget( { settings }) {
+const widgetSetting = useSelector((state) => state.layout.widgetSettings);
+const settings = widgetSetting[id];
 
 console.log('Team Widget render');
 console.log(settings);

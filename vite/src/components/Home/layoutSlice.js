@@ -125,7 +125,12 @@ const layoutSlice = createSlice({
             });
         },
         updateWidgetSetting(state, action) {
+            console.log("update widgetSetting");
             const {widgetId, settingName, value} = action.payload;
+
+            console.log(widgetId);
+            console.log(settingName);
+            console.log(value);
             state.widgetSettings[widgetId] = {
                 ...state.widgetSettings[widgetId],
                 [settingName]: {
@@ -133,6 +138,9 @@ const layoutSlice = createSlice({
                     value,
                 },
             };
+
+            console.log(state.widgetSettings[widgetId]);
+            console.log(state.widgetSettings);
         },
     },
     extraReducers: (builder) => {
