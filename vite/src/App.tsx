@@ -29,7 +29,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/auth/login" element={<Login />} />
-                  <Route path="/project/:projectId" component={ProjectContent} />
+                  <Route path="/project/:projectId" element={<ProjectContent />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </div>

@@ -73,10 +73,10 @@ export function DoubleNavbar() {
 
   const handleCreateProject = (newProject) => {
     setProjects((prevProjects) => {
-      // Redirect to the new project page
-      setActive(newProject.Name);
+      const updatedProjects = [...prevProjects, newProject];
+      setActive(newProject.ID); // Set the active project ID
       navigate(`/project/${newProject.ID}`); // Redirect to the new project
-      return [...prevProjects, newProject];
+      return updatedProjects;
     });
     setShowCreateProject(false);
   };
