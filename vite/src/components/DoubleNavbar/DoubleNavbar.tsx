@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
+import { useNavigate, useLocation } from 'react-router-dom'; // Import useNavigate for navigation and useLocation for route handling
 import { UnstyledButton, Tooltip, Title, rem } from '@mantine/core';
 import {
   IconHome2,
@@ -46,6 +46,7 @@ export function DoubleNavbar() {
   const [projects, setProjects] = useState<any[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation(); // Use location to determine the current route
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -56,10 +57,20 @@ export function DoubleNavbar() {
         });
         const data = response.data;
 
-        console.log(data); // Debug log
-
         if (Array.isArray(data.projects)) {
           setProjects(data.projects); // Ensure projects is set to an array
+
+          const pathSegments = location.pathname.split('/');
+          if (pathSegments[1] === 'project' && pathSegments[2]) {
+            // If the route is /project/:id
+            const projectId = pathSegments[2];
+            setActive('Projects'); // Set the active menu to 'Projects'
+            setActiveLink(projectId); // Set the active link to the project ID
+          } else if (pathSegments[1] === '') {
+            // If the route is just / (home)
+            setActive('Home');
+            setActiveLink(null);
+          }
         } else {
           console.error('Invalid projects data format:', data);
         }
@@ -69,12 +80,13 @@ export function DoubleNavbar() {
     };
 
     fetchProjects();
-  }, []);
+  }, [location.pathname]); // Depend on location.pathname to handle route changes
 
   const handleCreateProject = (newProject) => {
     setProjects((prevProjects) => {
       const updatedProjects = [...prevProjects, newProject];
-      setActive(newProject.ID); // Set the active project ID
+      setActive('Projects'); // Ensure 'Projects' is active
+      setActiveLink(newProject.ID); // Set the active link by project ID
       navigate(`/project/${newProject.ID}`); // Redirect to the new project
       return updatedProjects;
     });
@@ -92,7 +104,11 @@ export function DoubleNavbar() {
       <UnstyledButton
         onClick={() => {
           setActive(link.label);
+          setActiveLink(null); // Reset active link when changing to main links
           setShowCreateProject(false);
+          if (link.label === 'Home') {
+            navigate('/'); // Navigate to home
+          }
         }}
         className={classes.mainLink}
         data-active={link.label === active || undefined}
@@ -109,7 +125,8 @@ export function DoubleNavbar() {
       href="#"
       onClick={(event) => {
         event.preventDefault();
-        setActiveLink(link);
+        setActive(link);
+        setActiveLink(null); // Reset active link when changing to main links
       }}
       key={link} // Ensure each link has a unique key
     >
@@ -124,12 +141,13 @@ export function DoubleNavbar() {
       href="#"
       onClick={(event) => {
         event.preventDefault();
-        setActiveLink(project.ID); // Set active based on project ID
+        setActive('Projects'); // Set the active menu to 'Projects'
+        setActiveLink(project.ID); // Set the active link by project ID
         navigate(`/project/${project.ID}`); // Redirect to the project page
       }}
       key={project.ID}
     >
-      {project.Name}
+      {project.Name} {/* Display only the project name */}
     </a>
   ));
 
@@ -145,7 +163,7 @@ export function DoubleNavbar() {
         <div className={classes.main}>
           <div className={classes.header}>
             <Title order={4} className={classes.title}>
-              {active}
+              {active === 'Home' ? 'Projects' : active}
             </Title>
             {active === 'Home' && (
               <div className={classes.actions}>
@@ -178,7 +196,8 @@ export function DoubleNavbar() {
                 </div>
               </div>
             )}
-            {active !== 'Home' && links}
+            {active === 'Projects' && projectLinks}
+            {active !== 'Home' && active !== 'Projects' && links}
           </div>
         </div>
       </div>
