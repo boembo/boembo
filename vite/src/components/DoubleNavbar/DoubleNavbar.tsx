@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom'; 
+import { useNavigate, useParams, useMatch } from 'react-router-dom'; 
 import { UnstyledButton, Tooltip, Title, rem, ActionIcon } from '@mantine/core';
 import { IconHome2, IconGauge, IconDeviceDesktopAnalytics, IconFingerprint, IconCalendarStats, IconUser, IconSettings, IconPlus, IconPin } from '@tabler/icons-react';
 import { MantineLogo } from '@mantinex/mantine-logo';
@@ -38,9 +38,11 @@ export function DoubleNavbar() {
   const [pinnedProjects, setPinnedProjects] = useState<any[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const navigate = useNavigate();
-  const { id } = useParams(); // Get project ID from URL if applicable
-
+const match = useMatch('/project/:projectId');
+  const projectId = match?.params.projectId;
   useEffect(() => {
+    console.log('Project ID:', projectId); // Debug statement
+
     const fetchProjects = async () => {
       try {
         const token = localStorage.getItem('token');
@@ -69,16 +71,20 @@ export function DoubleNavbar() {
 
   useEffect(() => {
     // If accessing a project detail, make Home active and set the project as active
-    if (id) {
+    if (projectId) {
       setActive('Home');
-      setActiveLink(id);
+      setActiveLink(projectId);
+    } else {
+      setActive('Home');
+      setActiveLink(null);
     }
-  }, [id]);
+  }, [projectId]);
 
   const handleCreateProject = (newProject) => {
     setProjects((prevProjects) => {
-      const updatedProjects = [...prevProjects, newProject];
-      setActive(newProject.ID);
+      const updatedProjects = [newProject, ...prevProjects];
+      setActive('Home');
+      setActiveLink(newProject.ID);
       navigate(`/project/${newProject.ID}`);
       return updatedProjects;
     });
@@ -99,6 +105,23 @@ export function DoubleNavbar() {
       setPinnedProjects((prevPinned) => [...prevPinned, updatedProject]);
     } catch (error) {
       console.error('Failed to pin project:', error);
+    }
+  };
+
+  const handleUnpinProject = async (projectId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://localhost:3000/api/projects/pin', { project_id: projectId }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const updatedProject = response.data;
+
+      setPinnedProjects((prevPinned) =>
+        prevPinned.filter(project => project.ID !== updatedProject.ID)
+      );
+      setProjects((prevProjects) => [...prevProjects, updatedProject]);
+    } catch (error) {
+      console.error('Failed to unpin project:', error);
     }
   };
 
@@ -152,19 +175,28 @@ export function DoubleNavbar() {
   ));
 
   const pinnedProjectLinks = pinnedProjects.map((project) => (
-    <a
-      className={classes.link}
-      data-active={activeLink === project.ID || undefined}
-      href="#"
-      onClick={(event) => {
-        event.preventDefault();
-        setActiveLink(project.ID);
-        navigate(`/project/${project.ID}`);
-      }}
-      key={project.ID}
-    >
-      {project.Name}
-    </a>
+    <div className={classes.projectItem} key={project.ID}>
+      <a
+        className={classes.link}
+        data-active={activeLink === project.ID || undefined}
+        href="#"
+        onClick={(event) => {
+          event.preventDefault();
+          setActiveLink(project.ID);
+          navigate(`/project/${project.ID}`);
+        }}
+      >
+        {project.Name}
+      </a>
+      <Tooltip label="Unpin project" position="left" withArrow>
+        <ActionIcon
+          className={classes.pinButton}
+          onClick={() => handleUnpinProject(project.ID)}
+        >
+          <IconPin size={rem(16)} stroke={1.5} />
+        </ActionIcon>
+      </Tooltip>
+    </div>
   ));
 
   return (
@@ -193,6 +225,7 @@ export function DoubleNavbar() {
                     onClick={() => setShowCreateProject(true)}
                     className={classes.createProjectButton}
                   >
+                    Create Project
                     <IconPlus style={{ width: rem(22), height: rem(22) }} stroke={1.5} />
                   </UnstyledButton>
                 </Tooltip>
@@ -210,35 +243,21 @@ export function DoubleNavbar() {
                       {pinnedProjectLinks}
                     </div>
                   )}
-                  <div className={classes.projectList}>
+                  <div className={classes.allProjects}>
                     {projects.length > 0 ? (
                       <>
-                        {pinnedProjects.length > 0 && (
-                          <Title order={6}>Other Projects</Title>
+                        {active === 'Home' && (
+                          <Title order={6}>All Projects</Title>
                         )}
                         {projectLinks}
                       </>
                     ) : (
-                      <p>No projects available</p>
+                      <p>No projects available.</p>
                     )}
                   </div>
                 </div>
               </div>
             )}
-            {active !== 'Home' && linksMockdata.map((link) => (
-              <a
-                className={classes.link}
-                data-active={activeLink === link || undefined}
-                href="#"
-                onClick={(event) => {
-                  event.preventDefault();
-                  setActiveLink(link);
-                }}
-                key={link}
-              >
-                {link}
-              </a>
-            ))}
           </div>
         </div>
       </div>

@@ -106,6 +106,13 @@
     position: relative;
 }
 
+.createProjectButton {
+    @apply flex items-center gap-2;
+}
+
+.projectItem a{
+    width: 100%;
+}
 .pinButton {
     margin-left: var(--mantine-spacing-sm);
     visibility: hidden;
