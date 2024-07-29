@@ -1,24 +1,31 @@
-
 import React, { useState } from 'react';
 
-const TaskModal = ({ list, onClose, onSave }) => {
-  const [name, setName] = useState('');
+const TaskModal = ({ group, onClose, onSave }) => {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
 
-  const handleSubmit = () => {
-    onSave({ id: Date.now(), name, list });
-    onClose();
+  const handleSave = () => {
+    if (title && content) {
+      onSave({ group, title, content });
+    }
   };
 
   return (
-    <div className="modal">
-      <div className="modal-content">
-        <h3>Add Task</h3>
+    <div className="task-modal">
+      <div className="task-modal-content">
+        <h2>Add Task to {group}</h2>
         <input
           type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Task Title"
         />
-        <button onClick={handleSubmit}>Save</button>
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Task Content"
+        />
+        <button onClick={handleSave}>Save</button>
         <button onClick={onClose}>Cancel</button>
       </div>
     </div>
