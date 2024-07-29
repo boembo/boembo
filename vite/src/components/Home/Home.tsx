@@ -54,6 +54,7 @@ console.log(widgetId);
   }
 
   const handleWidgetSettingChange = (settingName, value) => {
+console.log("handleWidgetSettingChange");
     dispatch(updateWidgetSetting({ widgetId: selectedWidgetId, settingName, value }));
   };
 

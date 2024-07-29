@@ -1,0 +1,44 @@
+
+.kanban-board {
+    display: flex;
+    gap: 1rem;
+}
+
+.kanban-list {
+    background: #f0f0f0;
+    padding: 1rem;
+    width: 30%;
+    border-radius: 4px;
+}
+
+.task {
+    background: white;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    cursor: grab;
+    transform: rotate(0deg);
+    transition: transform 0.2s;
+}
+
+.task:active {
+    transform: rotate(5deg);
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 4px;
+}

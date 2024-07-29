@@ -6,7 +6,7 @@ import { DoubleNavbar } from './components/DoubleNavbar/DoubleNavbar';
 import { Home } from './components/Home/Home';
 import { MantineProvider } from '@mantine/core';
 import { Provider } from 'react-redux';
-import store from './components/Home/store';
+import store from './store/configureStore';
 import './index.css';
 import Login from './components/Login/Login';
 import Logout from './components/Login/Logout';
