@@ -1,5 +1,5 @@
-// Task.tsx
 import React from 'react';
+import './KanbanBoard.css'; // Ensure you import the CSS file
 
 const Task: React.FC<{
   task: {

@@ -9,9 +9,9 @@ const initialState = {
 };
 
 const defaultGroups = [
-    {id: '1', name: 'To Do'},
-    {id: '2', name: 'Processing'},
-    {id: '3', name: 'Complete'},
+    {id: "1", name: 'To Do'},
+    {id: "2", name: 'Processing'},
+    {id: "3", name: 'Complete'},
 ];
 
 // Create a slice of the store
@@ -26,8 +26,29 @@ const taskSlice = createSlice({
         },
         fetchTasksSuccess: (state, action) => {
             state.loading = false;
-            state.tasks = action.payload.tasks || []; // Ensure tasks is defined
-            state.groups = action.payload.tasks.length ? action.payload.groups : defaultGroups;
+
+            // Map tasks to groups
+            const tasks = action.payload.tasks.map(task => ({
+                    id: task.id.toString(),
+                    name: task.Title,
+                    content: task.Description,
+                    groupId: task.GroupID.toString()
+                }));
+
+            const tasksByGroup = tasks.reduce((acc, task) => {
+                if (!acc[task.groupId]) {
+                    acc[task.groupId] = [];
+                }
+                acc[task.groupId].push(task);
+                return acc;
+            }, {});
+
+            state.groups = defaultGroups.map(group => ({
+                    ...group,
+                    tasks: tasksByGroup[group.id] || []
+                }));
+
+            state.tasks = tasks;
         },
         fetchTasksFailure: (state, action) => {
             state.loading = false;
@@ -40,7 +61,20 @@ const taskSlice = createSlice({
         },
         createTaskSuccess: (state, action) => {
             state.loading = false;
-            state.tasks.push(action.payload);
+            const newTask = {
+                id: action.payload.id.toString(),
+                name: action.payload.Title,
+                content: action.payload.Description,
+                groupId: action.payload.GroupID.toString()
+            };
+
+            // Add the new task to the state
+            state.tasks.unshift(newTask); // Add to the beginning of the tasks array
+
+            const groupIndex = state.groups.findIndex(group => group.id === newTask.groupId);
+            if (groupIndex !== -1) {
+                state.groups[groupIndex].tasks.unshift(newTask); // Add to the beginning of the group tasks array
+            }
         },
         createTaskFailure: (state, action) => {
             state.loading = false;
@@ -56,6 +90,13 @@ const taskSlice = createSlice({
             const index = state.tasks.findIndex(task => task.id === action.payload.id);
             if (index !== -1) {
                 state.tasks[index] = action.payload;
+                const groupIndex = state.groups.findIndex(group => group.id === action.payload.groupId);
+                if (groupIndex !== -1) {
+                    const taskIndex = state.groups[groupIndex].tasks.findIndex(task => task.id === action.payload.id);
+                    if (taskIndex !== -1) {
+                        state.groups[groupIndex].tasks[taskIndex] = action.payload;
+                    }
+                }
             }
         },
         updateTaskFailure: (state, action) => {
@@ -70,6 +111,10 @@ const taskSlice = createSlice({
         deleteTaskSuccess: (state, action) => {
             state.loading = false;
             state.tasks = state.tasks.filter(task => task.id !== action.payload.id);
+            state.groups = state.groups.map(group => ({
+                    ...group,
+                    tasks: group.tasks.filter(task => task.id !== action.payload.id)
+                }));
         },
         deleteTaskFailure: (state, action) => {
             state.loading = false;

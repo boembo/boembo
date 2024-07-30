@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Task from './Task';
 import { useDispatch } from 'react-redux';
 import { createTaskRequest } from './taskSlice';
+import './KanbanBoard.css'; // Ensure you import the CSS file
 
 const Group: React.FC<{
   group: {
@@ -24,7 +25,7 @@ const Group: React.FC<{
   const handleCreateTask = () => {
     if (taskName.trim() === '') return; // Prevent creating tasks with empty name
 
-    dispatch(createTaskRequest({ projectId, task: { title: taskName, description: taskContent, group_id: group.id, project_id: projectId } }));
+    dispatch(createTaskRequest({ projectId, task: { Title: taskName, Description: taskContent, GroupID: group.id, ProjectID: projectId } }));
     setTaskName('');
     setTaskContent('');
     setIsAddingTask(false); // Hide form after creation

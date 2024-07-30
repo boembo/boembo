@@ -1,31 +1,98 @@
-/* KanbanBoard.css */
+/* Overall Kanban board container */
 .kanban-board {
     display: flex;
-    justify-content: space-around;
+    gap: 20px;
+    padding: 20px;
+    overflow-x: auto;
 }
 
-.kanban-group {
-    width: 30%;
+/* Group container styling */
+.group {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    padding: 10px;
+    width: 300px;
+    min-height: 400px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s;
+}
+
+.group:hover {
+    background-color: #e0f7fa;
+}
+
+/* Group title styling */
+.group h3 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #333;
+    border-bottom: 2px solid #00796b;
+    padding-bottom: 10px;
+}
+
+/* Button styling */
+button {
+    background-color: #00796b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #004d40;
+}
+
+button:disabled {
+    background-color: #cfd8dc;
+    cursor: not-allowed;
+}
+
+/* Add Task Form styling */
+.task-form {
+    margin: 10px 0;
     padding: 10px;
     border: 1px solid #ccc;
-    border-radius: 5px;
-    min-height: 400px;
-    background-color: #f9f9f9;
+    border-radius: 4px;
+    background-color: #fff;
 }
 
-.new-task-form {
+.task-form input,
+.task-form textarea {
+    width: 100%;
+    padding: 8px;
     margin-bottom: 10px;
-}
-
-.add-task-btn {
-    margin-top: 10px;
-}
-
-.task-card {
     border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.task-form textarea {
+    resize: vertical;
+}
+
+/* Task container styling */
+.task {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fff;
     padding: 10px;
     margin-bottom: 10px;
-    border-radius: 5px;
-    background-color: #fff;
-    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.task h4 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.task p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
 }
