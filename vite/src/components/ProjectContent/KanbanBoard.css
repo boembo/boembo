@@ -29,18 +29,3 @@
     background-color: #fff;
     cursor: pointer;
 }
-
-.task-form {
-    margin-top: 10px;
-}
-
-.task-form input,
-.task-form textarea {
-    display: block;
-    margin-bottom: 10px;
-    width: 100%;
-}
-
-.task-form button {
-    display: block;
-}

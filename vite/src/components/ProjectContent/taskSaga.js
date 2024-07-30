@@ -1,35 +1,27 @@
-// taskSaga.js
-import { call, put, takeLatest } from 'redux-saga/effects';
+import { call, put, takeEvery } from 'redux-saga/effects';
 import axios from 'axios';
 import {
-fetchTasksRequest,
-        fetchTasksSuccess,
-        fetchTasksFailure,
-        createTaskRequest,
-        createTaskSuccess,
-        createTaskFailure,
-        updateTaskRequest,
-        updateTaskSuccess,
-        updateTaskFailure,
-        deleteTaskRequest,
-        deleteTaskSuccess,
-        deleteTaskFailure,
-        fetchGroupsRequest,
-        fetchGroupsSuccess,
-        fetchGroupsFailure,
-        createGroupRequest,
-        createGroupSuccess,
-        createGroupFailure,
+fetchTasksRequest, fetchTasksSuccess, fetchTasksFailure,
+        createTaskRequest, createTaskSuccess, createTaskFailure,
+        updateTaskRequest, updateTaskSuccess, updateTaskFailure,
+        deleteTaskRequest, deleteTaskSuccess, deleteTaskFailure,
+        updateGroupOrderRequest, updateGroupOrderSuccess, updateGroupOrderFailure,
+        createGroupRequest, createGroupSuccess, createGroupFailure,
+        deleteGroupRequest, deleteGroupSuccess, deleteGroupFailure
         } from './taskSlice';
 
-// Get token from localStorage
-const getToken = () => localStorage.getItem('token');
+
+const defaultGroups = [
+    {id: '1', name: 'To Do'},
+    {id: '2', name: 'Processing'},
+    {id: '3', name: 'Complete'},
+];
 
 // Fetch tasks
-function* fetchTasksSaga(action) {
+function* fetchTasks(action) {
     try {
-        const token = getToken();
-        const response = yield call(axios.get, `http://localhost:3000/api/projects/${action.payload.projectId}/tasks`, {
+        const token = localStorage.getItem('token');
+        const response = yield call(axios.get, `http://localhost:3000/api/projects/${action.payload}/tasks`, {
             headers: {Authorization: `Bearer ${token}`},
         });
         yield put(fetchTasksSuccess(response.data));
@@ -39,10 +31,10 @@ function* fetchTasksSaga(action) {
 }
 
 // Create task
-function* createTaskSaga(action) {
+function* createTask(action) {
     try {
-        const token = getToken();
-        const response = yield call(axios.post, `http://localhost:3000/api/projects/${action.payload.projectId}/tasks`, action.payload, {
+        const token = localStorage.getItem('token');
+        const response = yield call(axios.post, `http://localhost:3000/api/projects/${action.payload.projectId}/createTasks`, action.payload.task, {
             headers: {Authorization: `Bearer ${token}`},
         });
         yield put(createTaskSuccess(response.data));
@@ -52,9 +44,9 @@ function* createTaskSaga(action) {
 }
 
 // Update task
-function* updateTaskSaga(action) {
+function* updateTask(action) {
     try {
-        const token = getToken();
+        const token = localStorage.getItem('token');
         const response = yield call(axios.put, `http://localhost:3000/api/tasks/update`, action.payload, {
             headers: {Authorization: `Bearer ${token}`},
         });
@@ -65,37 +57,37 @@ function* updateTaskSaga(action) {
 }
 
 // Delete task
-function* deleteTaskSaga(action) {
+function* deleteTask(action) {
     try {
-        const token = getToken();
+        const token = localStorage.getItem('token');
         yield call(axios.delete, `http://localhost:3000/api/tasks/delete`, {
-            data: {id: action.payload.id},
             headers: {Authorization: `Bearer ${token}`},
+            data: {id: action.payload.id}
         });
-        yield put(deleteTaskSuccess(action.payload.id));
+        yield put(deleteTaskSuccess(action.payload));
     } catch (error) {
         yield put(deleteTaskFailure(error.message));
     }
 }
 
-// Fetch groups
-function* fetchGroupsSaga(action) {
+// Update group order
+function* updateGroupOrder(action) {
     try {
-        const token = getToken();
-        const response = yield call(axios.get, `http://localhost:3000/api/projects/${action.payload.projectId}/groups`, {
+        const token = localStorage.getItem('token');
+        const response = yield call(axios.put, `http://localhost:3000/api/projects/${action.payload.projectId}/groups/update`, action.payload.groups, {
             headers: {Authorization: `Bearer ${token}`},
         });
-        yield put(fetchGroupsSuccess(response.data));
+        yield put(updateGroupOrderSuccess(response.data));
     } catch (error) {
-        yield put(fetchGroupsFailure(error.message));
+        yield put(updateGroupOrderFailure(error.message));
     }
 }
 
 // Create group
-function* createGroupSaga(action) {
+function* createGroup(action) {
     try {
-        const token = getToken();
-        const response = yield call(axios.post, `http://localhost:3000/api/projects/${action.payload.projectId}/groups`, action.payload, {
+        const token = localStorage.getItem('token');
+        const response = yield call(axios.post, `http://localhost:3000/api/projects/${action.payload.projectId}/groups/create`, action.payload.group, {
             headers: {Authorization: `Bearer ${token}`},
         });
         yield put(createGroupSuccess(response.data));
@@ -104,12 +96,29 @@ function* createGroupSaga(action) {
     }
 }
 
-// Watcher sagas
-export default function* taskSaga() {
-    yield takeLatest(fetchTasksRequest.type, fetchTasksSaga);
-    yield takeLatest(createTaskRequest.type, createTaskSaga);
-    yield takeLatest(updateTaskRequest.type, updateTaskSaga);
-    yield takeLatest(deleteTaskRequest.type, deleteTaskSaga);
-    yield takeLatest(fetchGroupsRequest.type, fetchGroupsSaga);
-    yield takeLatest(createGroupRequest.type, createGroupSaga);
+// Delete group
+function* deleteGroup(action) {
+    try {
+        const token = localStorage.getItem('token');
+        yield call(axios.delete, `http://localhost:3000/api/projects/${action.payload.projectId}/groups/delete`, {
+            headers: {Authorization: `Bearer ${token}`},
+            data: {id: action.payload.id}
+        });
+        yield put(deleteGroupSuccess(action.payload));
+    } catch (error) {
+        yield put(deleteGroupFailure(error.message));
+    }
 }
+
+// Watcher saga
+function* taskSaga() {
+    yield takeEvery(fetchTasksRequest.type, fetchTasks);
+    yield takeEvery(createTaskRequest.type, createTask);
+    yield takeEvery(updateTaskRequest.type, updateTask);
+    yield takeEvery(deleteTaskRequest.type, deleteTask);
+    yield takeEvery(updateGroupOrderRequest.type, updateGroupOrder);
+    yield takeEvery(createGroupRequest.type, createGroup);
+    yield takeEvery(deleteGroupRequest.type, deleteGroup);
+}
+
+export default taskSaga;

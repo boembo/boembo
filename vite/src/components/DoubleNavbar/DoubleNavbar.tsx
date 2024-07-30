@@ -40,8 +40,9 @@ export function DoubleNavbar() {
   const navigate = useNavigate();
 const match = useMatch('/project/:projectId');
   const projectId = match?.params.projectId;
+
   useEffect(() => {
-    console.log('Project ID:', projectId); // Debug statement
+    console.log('Project ID:', typeof(projectId)); // Debug statement
 
     const fetchProjects = async () => {
       try {
@@ -153,7 +154,7 @@ const match = useMatch('/project/:projectId');
     <div className={classes.projectItem} key={project.ID}>
       <a
         className={classes.link}
-        data-active={activeLink === project.ID || undefined}
+        data-active={activeLink == project.ID || undefined}
         href="#"
         onClick={(event) => {
           event.preventDefault();
@@ -178,7 +179,7 @@ const match = useMatch('/project/:projectId');
     <div className={classes.projectItem} key={project.ID}>
       <a
         className={classes.link}
-        data-active={activeLink === project.ID || undefined}
+        data-active={activeLink == project.ID || undefined}
         href="#"
         onClick={(event) => {
           event.preventDefault();
