@@ -526,6 +526,15 @@ func getTasksHandler(w http.ResponseWriter, r *http.Request) {
 
 
 
+var defaultGroups = []struct {
+    ID   int
+    Name string
+}{
+    {1, "To Do"},
+    {2, "Processing"},
+    {3, "Complete"},
+}
+
 func createTaskHandler(w http.ResponseWriter, r *http.Request) {
     authHeader := r.Header.Get("Authorization")
     if authHeader == "" {
@@ -573,8 +582,43 @@ func createTaskHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Increment the Order of existing tasks in the same group
-    if err := db.Model(&Task{}).Where("group_id = ?", groupID).Update("`order`", gorm.Expr("`order` + ?", 1)).Error; err != nil {
+    var group Group
+    if err := db.First(&group, groupID).Error; err != nil {
+        if err == gorm.ErrRecordNotFound {
+            // Check if groupID matches any default group
+            var defaultGroupName string
+            for _, defaultGroup := range defaultGroups {
+                if defaultGroup.ID == groupID {
+                    defaultGroupName = defaultGroup.Name
+                    break
+                }
+            }
+            if defaultGroupName == "" {
+                http.Error(w, "Invalid group ID", http.StatusBadRequest)
+                return
+            }
+            // Create new group
+            newGroup := Group{
+                ID:        groupID,
+                ProjectID: projectID,
+                Name:      defaultGroupName,
+                Order:     groupID, // Assuming default order is the same as ID
+                CreatedAt: time.Now(),
+                UpdatedAt: time.Now(),
+            }
+            if err := db.Create(&newGroup).Error; err != nil {
+                http.Error(w, "Error creating new group", http.StatusInternalServerError)
+                return
+            }
+            group = newGroup
+        } else {
+            http.Error(w, "Error fetching group", http.StatusInternalServerError)
+            return
+        }
+    }
+
+    // Shift orders of existing tasks in the group
+    if err := db.Model(&Task{}).Where("group_id = ?", groupID).Update("order", gorm.Expr("`order` + 1")).Error; err != nil {
         http.Error(w, "Error updating task orders", http.StatusInternalServerError)
         return
     }
@@ -585,7 +629,7 @@ func createTaskHandler(w http.ResponseWriter, r *http.Request) {
         Title:       req.Title,
         Description: req.Description,
         Status:      "test",
-        Order:       0, // New task has Order = 0
+        Order:       0,
         CreatedAt:   time.Now(),
         UpdatedAt:   time.Now(),
     }
@@ -765,7 +809,8 @@ func updateGroupOrderHandler(w http.ResponseWriter, r *http.Request) {
                 http.Error(w, "Error updating task order", http.StatusInternalServerError)
                 return
             }
-
+				
+			groupID, _ := strconv.Atoi(group.ID)
 			for taskIndex, task := range group.Tasks {
 				taskID, err := strconv.Atoi(task.ID)
 				if err != nil {
@@ -773,7 +818,7 @@ func updateGroupOrderHandler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				if err := db.Model(&Task{}).Where("id = ?", taskID).Update("order", taskIndex).Error; err != nil {
+				if err := db.Model(&Task{}).Where("id = ?", taskID).Updates(map[string]interface{}{"order": taskIndex, "group_id": groupID}).Error; err != nil {
 					http.Error(w, "Error updating task order", http.StatusInternalServerError)
 					return
 				}

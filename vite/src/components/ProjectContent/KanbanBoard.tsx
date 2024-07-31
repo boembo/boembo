@@ -58,7 +58,7 @@ const KanbanBoard: React.FC<{ projectId: string }> = ({ projectId }) => {
       });
 
       dispatch(updateGroupOrderRequest({ projectId, groups: newGroups }));
-      dispatch(updateTaskRequest({ ...movedTask, groupId: destinationGroup.id }));
+      //dispatch(updateTaskRequest({ ...movedTask, groupId: destinationGroup.id }));
     }
   };
 
