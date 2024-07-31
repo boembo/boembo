@@ -63,9 +63,11 @@ type Task struct {
 	Title       string    `gorm:"not null"`
 	Description string    `gorm:"not null"`
 	Status      string    `gorm:"not null"`
+	Order       int       `gorm:"not null"` // Add this field
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
 }
+
 
 type Group struct {
 	ID        int       `gorm:"primaryKey"`
@@ -73,6 +75,7 @@ type Group struct {
 	Name      string    `gorm:"not null"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+	Order     int       `gorm:"not null"`
 }
 
 type TaskUser struct {
@@ -133,6 +136,7 @@ r.HandleFunc("/api/projects/{projectId}/tasks", getTasksHandler) // New endpoint
 	r.HandleFunc("/api/tasks/delete", deleteTaskHandler) 
 
 r.HandleFunc("/api/groups/create", createGroupHandler)
+r.HandleFunc("/api/projects/{projectId}/groups/update", updateGroupOrderHandler)
 	// Add CORS middleware
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
@@ -477,151 +481,137 @@ func pinProjectHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func getTasksHandler(w http.ResponseWriter, r *http.Request) {
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Authorization header missing", http.StatusUnauthorized)
-		return
-	}
-	tokenString := authHeader[len("Bearer "):]
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString := authHeader[len("Bearer "):]
 
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
-	if err != nil || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
+    claims := &Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
 
-	projectID := mux.Vars(r)["projectId"]
+    projectID := mux.Vars(r)["projectId"]
 
-	var tasks []Task
-	if err := db.Where("project_id = ?", projectID).Find(&tasks).Error; err != nil {
-		http.Error(w, "Error fetching tasks", http.StatusInternalServerError)
-		return
-	}
+    var tasks []Task
+    if err := db.Where("project_id = ?", projectID).Find(&tasks).Error; err != nil {
+        http.Error(w, "Error fetching tasks", http.StatusInternalServerError)
+        return
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string][]Task{"tasks": tasks})
+    var groups []Group
+    if err := db.Where("project_id = ?", projectID).Find(&groups).Error; err != nil {
+        http.Error(w, "Error fetching groups", http.StatusInternalServerError)
+        return
+    }
+
+    // Create a combined response structure
+    response := struct {
+        Tasks  []Task  `json:"tasks"`
+        Groups []Group `json:"groups"`
+    }{
+        Tasks:  tasks,
+        Groups: groups,
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
 }
 
 
 
-
-// Add a function for parsing and handling the JWT token
 func createTaskHandler(w http.ResponseWriter, r *http.Request) {
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Authorization header missing", http.StatusUnauthorized)
-		return
-	}
-	tokenString := authHeader[len("Bearer "):]
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString := authHeader[len("Bearer "):]
 
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
-	if err != nil || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
+    claims := &Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
 
-	var req struct {
-		GroupID     string `json:"group_id"`
-		ProjectID   string `json:"project_id"`
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		Status      string `json:"status"`
-		UserIDs     []int  `json:"user_ids"`
-	}
+    var req struct {
+        GroupID     string `json:"GroupID"`
+        ProjectID   string `json:"ProjectID"`
+        Title       string `json:"Title"`
+        Description string `json:"Description"`
+        UserIDs     []int  `json:"UserIDs"`
+    }
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
+        return
+    }
 
-	groupID, err := strconv.Atoi(req.GroupID)
-	if err != nil {
-		http.Error(w, "Invalid group_id format", http.StatusBadRequest)
-		return
-	}
+    groupID, err := strconv.Atoi(req.GroupID)
+    if err != nil {
+        http.Error(w, "Invalid group ID format", http.StatusBadRequest)
+        return
+    }
 
-	projectID, err := strconv.Atoi(req.ProjectID)
-	if err != nil {
-		http.Error(w, "Invalid project_id format", http.StatusBadRequest)
-		return
-	}
+    projectID, err := strconv.Atoi(req.ProjectID)
+    if err != nil {
+        http.Error(w, "Invalid project ID format", http.StatusBadRequest)
+        return
+    }
 
-	if groupID == 0 || projectID == 0 || req.Title == "" {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
-		return
-	}
+    if groupID == 0 || projectID == 0 || req.Title == "" {
+        http.Error(w, "Missing required fields", http.StatusBadRequest)
+        return
+    }
 
-	// Check and create default group if it doesn't exist
-	var group Group
-	groupName := ""
-	switch groupID {
-	case 1:
-		groupName = "To Do"
-	case 2:
-		groupName = "In Progress"
-	case 3:
-		groupName = "Completed"
-	default:
-		http.Error(w, "Invalid group_id", http.StatusBadRequest)
-		return
-	}
+    // Increment the Order of existing tasks in the same group
+    if err := db.Model(&Task{}).Where("group_id = ?", groupID).Update("`order`", gorm.Expr("`order` + ?", 1)).Error; err != nil {
+        http.Error(w, "Error updating task orders", http.StatusInternalServerError)
+        return
+    }
 
-	// Look for the group in the database
-	if err := db.Where("project_id = ? AND name = ?", projectID, groupName).First(&group).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			// Group not found, create it
-			group = Group{
-				ProjectID:   projectID,
-				Name:        groupName,
-				CreatedAt:   time.Now(),
-				UpdatedAt:   time.Now(),
-			}
-			if err := db.Create(&group).Error; err != nil {
-				http.Error(w, "Error creating group", http.StatusInternalServerError)
-				return
-			}
-		} else {
-			http.Error(w, "Error checking for group", http.StatusInternalServerError)
-			return
-		}
-	}
+    newTask := Task{
+        GroupID:     groupID,
+        ProjectID:   projectID,
+        Title:       req.Title,
+        Description: req.Description,
+        Status:      "test",
+        Order:       0, // New task has Order = 0
+        CreatedAt:   time.Now(),
+        UpdatedAt:   time.Now(),
+    }
 
-	task := Task{
-		GroupID:     group.ID,
-		ProjectID:   projectID,
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      "test",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
+    if err := db.Create(&newTask).Error; err != nil {
+        http.Error(w, "Error creating task", http.StatusInternalServerError)
+        return
+    }
 
-	if err := db.Create(&task).Error; err != nil {
-		http.Error(w, "Error creating task", http.StatusInternalServerError)
-		return
-	}
+    for _, userID := range req.UserIDs {
+        taskUser := TaskUser{
+            TaskID: newTask.ID,
+            UserID: userID,
+        }
+        if err := db.Create(&taskUser).Error; err != nil {
+            http.Error(w, "Error assigning users to task", http.StatusInternalServerError)
+            return
+        }
+    }
 
-	// Assign users to the task
-	for _, userID := range req.UserIDs {
-		taskUser := TaskUser{
-			TaskID: task.ID,
-			UserID: userID,
-		}
-		if err := db.Create(&taskUser).Error; err != nil {
-			http.Error(w, "Error assigning users to task", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(task)
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(newTask)
 }
+
+
+
 
 
 func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
@@ -687,6 +677,116 @@ func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func reorderTasksHandler(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+		return
+	}
+	tokenString := authHeader[len("Bearer "):]
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		GroupID int   `json:"groupId"`
+		TaskIDs []int `json:"taskIds"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	if req.GroupID == 0 || len(req.TaskIDs) == 0 {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	for order, taskID := range req.TaskIDs {
+		if err := db.Model(&Task{}).Where("id = ? AND group_id = ?", taskID, req.GroupID).Update("order", order).Error; err != nil {
+			http.Error(w, "Error reordering tasks", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+
+func updateGroupOrderHandler(w http.ResponseWriter, r *http.Request) {
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString := authHeader[len("Bearer "):]
+
+    claims := &Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+
+    var req struct {
+        Groups []struct {
+            ID    string `json:"id"`
+            Name  string `json:"name"`
+            Tasks []struct {
+                ID    string `json:"id"`
+                Index int    `json:"index"` // This is the new order index
+            } `json:"tasks"`
+        } `json:"groups"`
+        ProjectID string `json:"projectId"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
+        return
+    }
+
+    // Update task orders in the database
+    for groupIndex, group := range req.Groups {
+        if err != nil {
+            http.Error(w, "Invalid group ID format", http.StatusBadRequest)
+            return
+        }
+
+			if err := db.Model(&Group{}).Where("id = ?", group.ID).Update("order", groupIndex).Error; err != nil {
+                http.Error(w, "Error updating task order", http.StatusInternalServerError)
+                return
+            }
+
+			for taskIndex, task := range group.Tasks {
+				taskID, err := strconv.Atoi(task.ID)
+				if err != nil {
+					http.Error(w, "Invalid task ID format", http.StatusBadRequest)
+					return
+				}
+
+				if err := db.Model(&Task{}).Where("id = ?", taskID).Update("order", taskIndex).Error; err != nil {
+					http.Error(w, "Error updating task order", http.StatusInternalServerError)
+					return
+				}
+			}
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(req.Groups)
+}
+
+
+
+
 func createGroupHandler(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -704,10 +804,33 @@ func createGroupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var group Group
-	if err := json.NewDecoder(r.Body).Decode(&group); err != nil {
+	var req struct {
+		ProjectID int    `json:"projectId"`
+		Name      string `json:"name"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
+	}
+
+	if req.ProjectID == 0 || req.Name == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	var maxOrder int
+	if err := db.Model(&Group{}).Where("project_id = ?", req.ProjectID).Select("IFNULL(MAX(`order`), 0)").Scan(&maxOrder).Error; err != nil {
+		http.Error(w, "Error getting max order", http.StatusInternalServerError)
+		return
+	}
+
+	group := Group{
+		ProjectID: req.ProjectID,
+		Name:      req.Name,
+		Order:     maxOrder + 1,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	if err := db.Create(&group).Error; err != nil {

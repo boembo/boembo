@@ -1,5 +1,5 @@
 import React from 'react';
-import './KanbanBoard.css'; // Ensure you import the CSS file
+import { Draggable } from '@hello-pangea/dnd';
 
 const Task: React.FC<{
   task: {
@@ -8,12 +8,24 @@ const Task: React.FC<{
     content: string;
     groupId: string;
   };
-}> = ({ task }) => {
+  index: number;
+}> = ({ task, index }) => {
+
+  console.log(task.id);
   return (
-    <div className="task">
-      <h4>{task.name}</h4>
-      <p>{task.content}</p>
-    </div>
+    <Draggable key={task.id} draggableId={"task-"+task.id} index={index} >
+      {(provided) => (
+        <div
+          className="task"
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+        >
+          <h4>{task.name}</h4>
+          <p>{task.content}</p>
+        </div>
+      )}
+    </Draggable>
   );
 };
 

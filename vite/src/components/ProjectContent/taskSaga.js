@@ -74,10 +74,10 @@ function* deleteTask(action) {
 function* updateGroupOrder(action) {
     try {
         const token = localStorage.getItem('token');
-        const response = yield call(axios.put, `http://localhost:3000/api/projects/${action.payload.projectId}/groups/update`, action.payload.groups, {
+        const response = yield call(axios.put, `http://localhost:3000/api/projects/${action.payload.projectId}/groups/update`, action.payload, {
             headers: {Authorization: `Bearer ${token}`},
         });
-        yield put(updateGroupOrderSuccess(response.data));
+        yield put(updateGroupOrderSuccess(action.payload.groups));
     } catch (error) {
         yield put(updateGroupOrderFailure(error.message));
     }

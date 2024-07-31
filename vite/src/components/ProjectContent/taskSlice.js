@@ -27,15 +27,19 @@ const taskSlice = createSlice({
         fetchTasksSuccess: (state, action) => {
             state.loading = false;
 
-            // Map tasks to groups
-            const tasks = action.payload.tasks.map(task => ({
-                    id: task.id.toString(),
-                    name: task.Title,
-                    content: task.Description,
-                    groupId: task.GroupID.toString()
-                }));
+            // Sort tasks by Order attribute in descending order
+            const sortedTasks = action.payload.tasks
+                    .map(task => ({
+                            id: task.id.toString(),
+                            name: task.Title,
+                            content: task.Description,
+                            groupId: task.GroupID.toString(),
+                            order: task.Order // Ensure order attribute is included
+                        }))
+                    .sort((a, b) => a.order - b.order); // Sort by order ascending
 
-            const tasksByGroup = tasks.reduce((acc, task) => {
+            // Map tasks to groups
+            const tasksByGroup = sortedTasks.reduce((acc, task) => {
                 if (!acc[task.groupId]) {
                     acc[task.groupId] = [];
                 }
@@ -43,13 +47,32 @@ const taskSlice = createSlice({
                 return acc;
             }, {});
 
-            state.groups = defaultGroups.map(group => ({
-                    ...group,
-                    tasks: tasksByGroup[group.id] || []
+            // Ensure groups are included in action.payload
+            const payloadGroups = action.payload.groups.map(group => ({
+                    id: group.ID.toString(),
+                    name: group.Name,
+                    order: group.Order
                 }));
 
-            state.tasks = tasks;
+            // Merge default groups with payload groups, giving priority to payload groups
+            const groupsMap = {};
+            defaultGroups.forEach(group => {
+                groupsMap[group.id] = {...group, tasks: []};
+            });
+            payloadGroups.forEach(group => {
+                groupsMap[group.id] = {...group, tasks: tasksByGroup[group.id] || []};
+            });
+
+            // Convert groupsMap back to an array
+            const mergedGroups = Object.values(groupsMap);
+
+            // Map tasks to their corresponding groups
+            state.groups = mergedGroups;
+
+            state.tasks = sortedTasks;
         },
+
+
         fetchTasksFailure: (state, action) => {
             state.loading = false;
             state.error = action.payload;

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Task from './Task';
 import { useDispatch } from 'react-redux';
 import { createTaskRequest } from './taskSlice';
+import { Droppable, Draggable } from '@hello-pangea/dnd';
 import './KanbanBoard.css'; // Ensure you import the CSS file
 
 const Group: React.FC<{
@@ -16,7 +17,8 @@ const Group: React.FC<{
     }[];
   };
   projectId: string;
-}> = ({ group, projectId }) => {
+  index: number;
+}> = ({ group, projectId, index }) => {
   const dispatch = useDispatch();
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [taskName, setTaskName] = useState('');
@@ -31,43 +33,51 @@ const Group: React.FC<{
     setIsAddingTask(false); // Hide form after creation
   };
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, groupId: string) => {
-    e.dataTransfer.setData('groupId', groupId);
-  };
-
   return (
-    <div
-      className="group"
-      draggable
-      onDragStart={(e) => handleDragStart(e, group.id)}
-      data-group-id={group.id}
-    >
-      <h3>{group.name}</h3>
-      <button onClick={() => setIsAddingTask(!isAddingTask)}>
-        {isAddingTask ? 'Cancel' : '+ Add Task'}
-      </button>
+    <Draggable draggableId={"group-"+group.id}  index={index} >
+      {(provided) => (
+        <div
+          className="group"
+          {...provided.draggableProps}
+          ref={provided.innerRef}
+        >
+          <div {...provided.dragHandleProps}>
+          <h3>{group.name}</h3>
+          </div>
+          <button onClick={() => setIsAddingTask(!isAddingTask)}>
+            {isAddingTask ? 'Cancel' : '+ Add Task'}
+          </button>
 
-      {isAddingTask && (
-        <div className="task-form">
-          <input
-            type="text"
-            placeholder="Task Name"
-            value={taskName}
-            onChange={(e) => setTaskName(e.target.value)}
-          />
-          <textarea
-            placeholder="Task Content"
-            value={taskContent}
-            onChange={(e) => setTaskContent(e.target.value)}
-          />
-          <button onClick={handleCreateTask}>Save Task</button>
+          {isAddingTask && (
+            <div className="task-form">
+              <input
+                type="text"
+                placeholder="Task Name"
+                value={taskName}
+                onChange={(e) => setTaskName(e.target.value)}
+              />
+              <textarea
+                placeholder="Task Content"
+                value={taskContent}
+                onChange={(e) => setTaskContent(e.target.value)}
+              />
+              <button onClick={handleCreateTask}>Save Task</button>
+            </div>
+          )}
+
+          <Droppable droppableId={group.id} type="task">
+            {(provided) => (
+              <div ref={provided.innerRef} {...provided.draggableProps} className="tasks">
+                {Array.isArray(group.tasks) && group.tasks.map((task, index) => (
+                  <Task key={task.id} task={task} index={index} />
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
         </div>
       )}
-
-      {Array.isArray(group.tasks) && group.tasks.map((task) => (
-        <Task key={task.id} task={task} />
-      ))}
-    </div>
+    </Draggable>
   );
 };
 
