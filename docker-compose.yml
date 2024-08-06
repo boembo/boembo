@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mysql:
     image: mysql
@@ -35,12 +33,25 @@ services:
     depends_on:
       - mysql
       - rabbitmq
+      
+  websocket:
+    build:
+      context: ./websocket-server # Path to the WebSocket server directory
+    ports:
+      - "8080:8080"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - rabbitmq
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "5672:5672"
       - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
 
   prometheus:
     image: prom/prometheus

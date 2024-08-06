@@ -8,6 +8,35 @@ const KanbanBoard: React.FC<{ projectId: string }> = ({ projectId }) => {
   const dispatch = useDispatch();
   const { tasks, groups, loading, error } = useSelector((state: any) => state.tasks);
 
+  
+ useEffect(() => {
+    // Create a new WebSocket connection
+    const socket = new WebSocket('ws://localhost:8080/ws');
+
+    // Event listener for when the connection is opened
+    socket.addEventListener('open', (event) => {
+      console.log('Connection established');
+      socket.send('Connection established');
+    });
+
+    // Event listener for when a message is received
+    socket.addEventListener('message', (event) => {
+      try {
+        const updatedTask = JSON.parse(event.data);
+        // Handle the updated task here, e.g., dispatch an action to update the state
+        dispatch(fetchTasksRequest(projectId));
+      } catch (error) {
+        console.error('Error parsing message:', error);
+      }
+    });
+
+    // Clean up the WebSocket connection when the component unmounts
+    return () => {
+      socket.close();
+    };
+  }, [dispatch, projectId]);
+
+
   useEffect(() => {
     dispatch(fetchTasksRequest(projectId));
   }, [dispatch, projectId]);

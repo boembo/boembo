@@ -3,17 +3,17 @@
 FROM golang:1.22
 
 # Set the working directory
-WORKDIR /go/src/app
+WORKDIR /usr/src/api
 
 # Copy the Go application code
 COPY . .
 
 RUN go get
 # Build the Go app
-RUN go build main .
+RUN go build -o app
 
 # Expose the port the app runs on
-EXPOSE 8080
+EXPOSE 3000
 
 # Run the app
-CMD ["./main"]
+CMD ["./app"]

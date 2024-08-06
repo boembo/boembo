@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 "github.com/prometheus/client_golang/prometheus"
     "github.com/prometheus/client_golang/prometheus/promhttp"
+"github.com/streadway/amqp"
 )
 
 type Credentials struct {
@@ -569,14 +570,15 @@ var defaultGroups = []struct {
     {3, "Complete"},
 }
 
+
 func createTaskHandler(w http.ResponseWriter, r *http.Request) {
     authHeader := r.Header.Get("Authorization")
     if authHeader == "" {
         http.Error(w, "Authorization header missing", http.StatusUnauthorized)
         return
     }
-    tokenString := authHeader[len("Bearer "):]
 
+    tokenString := authHeader[len("Bearer "):]
     claims := &Claims{}
     token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
         return []byte(os.Getenv("JWT_SECRET")), nil
@@ -684,10 +686,57 @@ func createTaskHandler(w http.ResponseWriter, r *http.Request) {
         }
     }
 
+    // Publish the event to RabbitMQ
+    conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+    if err != nil {
+        http.Error(w, "Error connecting to RabbitMQ", http.StatusInternalServerError)
+        return
+    }
+    defer conn.Close()
+
+    ch, err := conn.Channel()
+    if err != nil {
+        http.Error(w, "Error creating RabbitMQ channel", http.StatusInternalServerError)
+        return
+    }
+    defer ch.Close()
+
+    q, err := ch.QueueDeclare(
+        "task_events", // name
+        true,          // durable
+        false,         // delete when unused
+        false,         // exclusive
+        false,         // no-wait
+        nil,           // arguments
+    )
+    if err != nil {
+        http.Error(w, "Error declaring RabbitMQ queue", http.StatusInternalServerError)
+        return
+    }
+
+    body, err := json.Marshal(newTask)
+    if err != nil {
+        http.Error(w, "Error marshalling task", http.StatusInternalServerError)
+        return
+    }
+
+    err = ch.Publish(
+        "",     // exchange
+        q.Name, // routing key
+        false,  // mandatory
+        false,  // immediate
+        amqp.Publishing{
+            ContentType: "application/json",
+            Body:        body,
+        })
+    if err != nil {
+        http.Error(w, "Error publishing message to RabbitMQ", http.StatusInternalServerError)
+        return
+    }
+
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(newTask)
 }
-
 
 
 
