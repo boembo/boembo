@@ -19,6 +19,8 @@ import (
 	"google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 	"github.com/gorilla/mux"
+"github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Credentials struct {
@@ -82,31 +84,61 @@ type TaskUser struct {
 	TaskID int `gorm:"not null"`
 	UserID int `gorm:"not null"`
 }
+var (
+    requests = prometheus.NewCounterVec(
+        prometheus.CounterOpts{
+            Name: "golang_requests_total",
+            Help: "Total number of requests",
+        },
+        []string{"method"},
+    )
+)
 
+func init() {
+    prometheus.MustRegister(requests)
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    requests.WithLabelValues(r.Method).Inc()
+    w.Write([]byte("Hello, world!"))
+}
 
 
 var db *gorm.DB
-
 func connectDB() {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_NAME"),
-	)
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+    os.Getenv("DB_USER"),
+    os.Getenv("DB_PASSWORD"),
+    os.Getenv("DB_HOST"),
+    os.Getenv("DB_PORT"),
+    os.Getenv("DB_NAME"))
+
 
 	var err error
-	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	count := 0
+	maxRetries := 30
+
+	for {
+		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if err != nil {
+			log.Println("Not ready. Retry connecting...")
+			time.Sleep(time.Second)
+			count++
+			log.Println(count)
+			if count >= maxRetries {
+				log.Fatalf("Failed to connect to database after %d retries: %v", maxRetries, err)
+			}
+			continue
+		}
+
+		log.Println("Connected to database")
+		break
 	}
 
-	log.Println("Connected to database")
-
 	// Auto Migrate tables
-	err = db.AutoMigrate(&User{}, &UserSetting{}, &Project{}, &Task{}, &TaskUser{} , &Group{})
+	err = db.AutoMigrate(&User{}, &UserSetting{}, &Project{}, &Task{}, &TaskUser{}, &Group{})
 	if err != nil {
 		log.Fatalf("Failed to auto migrate tables: %v", err)
 	}
@@ -119,6 +151,8 @@ func main() {
 	}
 
 	connectDB()
+
+http.Handle("/metrics", promhttp.Handler())
 
 	r := mux.NewRouter()
 	r.HandleFunc("/api/auth/google", googleAuthHandler)
