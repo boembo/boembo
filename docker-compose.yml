@@ -10,11 +10,13 @@ services:
       - mysql-data:/var/lib/mysql
 
   nodejs:
-    build:
-      context: ./vite
-      dockerfile: Dockerfile
+    image: node:20-alpine
     ports:
       - "5173:5173"  # Updated port
+    volumes:
+      - ./vite/:/app/
+    command: sh -c "cd /app/ && npm i && npm run dev"
+    expose: [5173]
     environment:
       - DB_HOST=mysql
       - DB_USER=root

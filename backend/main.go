@@ -59,6 +59,21 @@ type Project struct {
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
+type Role struct {
+	ID        int       `gorm:"primaryKey"`
+	Name      string    `gorm:"not null"`
+}
+
+type ProjectMember struct {
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt gorm.DeletedAt
+    ProjectID int
+    UserID    int
+    Role      string // if applicable
+}
+
+
 type Task struct {
 	ID          int       `json:"id" gorm:"primaryKey"`
 	GroupID     int       `gorm:"not null"`
@@ -107,7 +122,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 var db *gorm.DB
 func connectDB() {
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
     os.Getenv("DB_USER"),
     os.Getenv("DB_PASSWORD"),
     os.Getenv("DB_HOST"),
@@ -139,7 +154,7 @@ func connectDB() {
 	}
 
 	// Auto Migrate tables
-	err = db.AutoMigrate(&User{}, &UserSetting{}, &Project{}, &Task{}, &TaskUser{}, &Group{})
+	err = db.AutoMigrate(&User{}, &UserSetting{}, &Project{}, &Task{}, &TaskUser{}, &Group{}, &ProjectMember{})
 	if err != nil {
 		log.Fatalf("Failed to auto migrate tables: %v", err)
 	}
@@ -153,7 +168,7 @@ func main() {
 
 	connectDB()
 
-http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/metrics", promhttp.Handler())
 
 	r := mux.NewRouter()
 	r.HandleFunc("/api/auth/google", googleAuthHandler)
@@ -161,17 +176,21 @@ http.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/api/user", userHandler)
 	r.HandleFunc("/api/settings/save", saveSettingsHandler)
 	r.HandleFunc("/api/widgetSettings", getSettingsHandler)
-r.HandleFunc("/api/projects", getProjectsHandler)
+	r.HandleFunc("/api/projects", getProjectsHandler)
 	r.HandleFunc("/api/projects/save", createProjectHandler)
-r.HandleFunc("/api/projects/pin", pinProjectHandler)
+	r.HandleFunc("/api/projects/pin", pinProjectHandler)
 
-r.HandleFunc("/api/projects/{projectId}/tasks", getTasksHandler) // New endpoint to get tasks
+	r.HandleFunc("/api/projects/{projectId}/tasks", getTasksHandler) // New endpoint to get tasks
 	r.HandleFunc("/api/projects/{projectId}/createTasks", createTaskHandler) // New endpoint to create a task
 	r.HandleFunc("/api/tasks/update", updateTaskHandler) // New endpoint to update a task
 	r.HandleFunc("/api/tasks/delete", deleteTaskHandler) 
 
-r.HandleFunc("/api/groups/create", createGroupHandler)
-r.HandleFunc("/api/projects/{projectId}/groups/update", updateGroupOrderHandler)
+	r.HandleFunc("/api/groups/create", createGroupHandler)
+	r.HandleFunc("/api/projects/{projectId}/groups/update", updateGroupOrderHandler)
+
+	r.HandleFunc("/api/users/all", listAllUsersHandler)
+	r.HandleFunc("/api/projects/{projectId}/members", listMembersHandler)
+	r.HandleFunc("/api/projects/{projectId}/members/sync", syncMemberHandler)
 	// Add CORS middleware
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
@@ -183,6 +202,228 @@ r.HandleFunc("/api/projects/{projectId}/groups/update", updateGroupOrderHandler)
 	log.Println("Server started at :3000")
 	http.ListenAndServe(":3000", handler)
 }
+
+
+
+
+
+func syncMemberHandler(w http.ResponseWriter, r *http.Request) {
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString := authHeader[len("Bearer "):]
+
+    claims := &Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+
+	projectID, err := strconv.Atoi(mux.Vars(r)["projectId"])
+    if err != nil {
+        http.Error(w, "Invalid project ID format", http.StatusBadRequest)
+        return
+    }
+
+    var req struct {
+        MemberIDs []int  `json:"memberIds"`
+    }
+   if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+    http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
+    return
+}
+
+
+    log.Printf("Received member IDs: %v", req.MemberIDs)
+
+    var currentMembers []ProjectMember
+    if err := db.Where("project_id = ?", projectID).Find(&currentMembers).Error; err != nil {
+        http.Error(w, "Error fetching current members", http.StatusInternalServerError)
+        return
+    }
+
+    currentMemberIDs := make(map[int]bool)
+    for _, member := range currentMembers {
+        currentMemberIDs[member.UserID] = true
+    }
+
+    addedMembers := []int{}
+    removedMembers := []int{}
+    newMemberMap := make(map[int]bool)
+
+    for _, id := range req.MemberIDs {
+        newMemberMap[id] = true
+        if !currentMemberIDs[id] {
+            addedMembers = append(addedMembers, id)
+        }
+    }
+
+    for _, member := range currentMembers {
+        if !newMemberMap[member.UserID] {
+            removedMembers = append(removedMembers, member.UserID)
+        }
+    }
+
+    log.Printf("Added members: %v", addedMembers)
+    log.Printf("Removed members: %v", removedMembers)
+
+    tx := db.Begin()
+    defer func() {
+        if r := recover(); r != nil {
+            tx.Rollback()
+            log.Printf("Recovered in f: %v", r)
+        }
+    }()
+
+    if err := tx.Where("project_id = ?", projectID).Delete(&ProjectMember{}).Error; err != nil {
+        tx.Rollback()
+        http.Error(w, "Error removing members", http.StatusInternalServerError)
+        return
+    }
+
+    newMembers := make([]ProjectMember, len(req.MemberIDs))
+    for i, id := range req.MemberIDs {
+        newMembers[i] = ProjectMember{ProjectID: projectID, UserID: id}
+    }
+
+    log.Printf("New members to add: %v", newMembers)
+
+    if len(newMembers) > 0 {
+        if err := tx.Create(&newMembers).Error; err != nil {
+            tx.Rollback()
+            http.Error(w, "Error adding members", http.StatusInternalServerError)
+            return
+        }
+    }
+
+    tx.Commit()
+
+    notifyMembers("add", projectID, addedMembers)
+    notifyMembers("remove", projectID, removedMembers)
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Members synchronized successfully"})
+}
+
+
+
+
+
+// Notify members about project changes via WebSocket and RabbitMQ
+func notifyMembers(action string, projectID int, userIDs []int) {
+    // RabbitMQ setup and publishing
+    conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+    if err != nil {
+        log.Printf("Failed to connect to RabbitMQ: %v", err)
+        return
+    }
+    defer conn.Close()
+
+    ch, err := conn.Channel()
+    if err != nil {
+        log.Printf("Failed to open a channel: %v", err)
+        return
+    }
+    defer ch.Close()
+
+    queue, err := ch.QueueDeclare(
+        "project_updates",
+        false,
+        false,
+        false,
+        false,
+        nil,
+    )
+    if err != nil {
+        log.Printf("Failed to declare a queue: %v", err)
+        return
+    }
+
+    for _, userID := range userIDs {
+        msg := fmt.Sprintf(`{"action": "%s", "project_id": "%s", "user_id": "%s"}`, action, projectID, userID)
+        err = ch.Publish(
+            "",
+            queue.Name,
+            false,
+            false,
+            amqp.Publishing{
+                ContentType: "application/json",
+                Body:        []byte(msg),
+            },
+        )
+        if err != nil {
+            log.Printf("Failed to publish a message: %v", err)
+            return
+        }
+
+        log.Printf("Notified other users: action=%s, project_id=%s, user_id=%s", action, projectID, userID)
+    }
+}
+
+
+// List all members participating in a project
+func listMembersHandler(w http.ResponseWriter, r *http.Request) {
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString := authHeader[len("Bearer "):]
+
+    claims := &Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+
+    projectID := mux.Vars(r)["projectId"]
+
+    var members []ProjectMember
+    if err := db.Where("project_id = ?", projectID).Find(&members).Error; err != nil {
+        http.Error(w, "Error fetching project members", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(members)
+}
+
+// List all available users (example implementation)
+func listAllUsersHandler(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString := authHeader[len("Bearer "):]
+
+    claims := &Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+
+    var users []User
+    if err := db.Find(&users).Error; err != nil {
+        http.Error(w, "Error fetching users", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(users)
+}
+
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
@@ -214,6 +455,8 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
 }
+
+
 
 func googleAuthHandler(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
